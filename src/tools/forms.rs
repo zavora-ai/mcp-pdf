@@ -96,23 +96,45 @@ pub fn fill_form(pdf_path: &str, output: &str, field_values: &serde_json::Value)
                 None => return serde_json::json!({"error": "field_values must be a JSON object"}).to_string(),
             };
 
-            // Find AcroForm fields
-            let field_ids: Vec<lopdf::ObjectId> = {
-                let mut ids = Vec::new();
-                if let Ok(catalog) = doc.catalog() {
-                    if let Ok(acroform) = catalog.get(b"AcroForm").and_then(|a| a.as_dict()) {
-                        if let Ok(field_arr) = acroform.get(b"Fields").and_then(|f| f.as_array()) {
-                            for field_ref in field_arr {
-                                if let Ok(id) = field_ref.as_reference() {
-                                    ids.push(id);
+            // Collect all field IDs (from AcroForm and page annotations)
+            let mut field_ids: Vec<lopdf::ObjectId> = Vec::new();
+
+            // Method 1: AcroForm /Fields
+            if let Ok(catalog) = doc.catalog() {
+                if let Ok(acroform_ref) = catalog.get(b"AcroForm") {
+                    let acroform = match acroform_ref {
+                        lopdf::Object::Reference(id) => doc.get_dictionary(*id).ok(),
+                        lopdf::Object::Dictionary(d) => Some(d),
+                        _ => None,
+                    };
+                    if let Some(af) = acroform {
+                        if let Ok(arr) = af.get(b"Fields").and_then(|f| f.as_array()) {
+                            for r in arr { if let Ok(id) = r.as_reference() { field_ids.push(id); } }
+                        }
+                    }
+                }
+            }
+
+            // Method 2: Page Widget annotations
+            if field_ids.is_empty() {
+                for (_, &page_id) in &doc.get_pages() {
+                    if let Ok(page) = doc.get_dictionary(page_id) {
+                        if let Ok(annots) = page.get(b"Annots").and_then(|a| a.as_array()) {
+                            for obj in annots {
+                                if let Ok(id) = obj.as_reference() {
+                                    if let Ok(annot) = doc.get_dictionary(id) {
+                                        if annot.get(b"Subtype").and_then(|s| s.as_name()).ok() == Some(b"Widget") {
+                                            field_ids.push(id);
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                ids
-            };
+            }
 
+            // Fill matching fields
             for field_id in field_ids {
                 if let Ok(field) = doc.get_dictionary(field_id) {
                     let name = field.get(b"T").and_then(|t| t.as_str())
