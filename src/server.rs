@@ -148,6 +148,19 @@ pub struct RedactInput {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DecryptInput { pub pdf_path: String, pub output: String, pub password: String }
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PermissionsInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub owner_password: String,
+    pub allow_print: Option<bool>,
+    pub allow_copy: Option<bool>,
+    pub allow_edit: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct FillFormInput {
     pub pdf_path: String,
     pub output: String,
@@ -467,6 +480,31 @@ impl PdfServer {
     #[tool(description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)")]
     async fn redact_pdf(&self, Parameters(input): Parameters<RedactInput>) -> String {
         security::redact_pdf(&input.pdf_path, &input.output, &input.terms, input.mode.as_deref())
+    }
+
+    #[tool(description = "Sanitize PDF: remove JavaScript, actions, embedded files, metadata")]
+    async fn sanitize_pdf(&self, Parameters(input): Parameters<OutputInput>) -> String {
+        security::sanitize_pdf(&input.pdf_path, &input.output)
+    }
+
+    #[tool(description = "Remove all metadata from PDF (author, dates, creator, XMP)")]
+    async fn remove_metadata(&self, Parameters(input): Parameters<OutputInput>) -> String {
+        security::remove_metadata(&input.pdf_path, &input.output)
+    }
+
+    #[tool(description = "Detect active content: JavaScript, actions, embedded files")]
+    async fn detect_active_content(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
+        security::detect_active_content(&input.pdf_path)
+    }
+
+    #[tool(description = "Decrypt a password-protected PDF")]
+    async fn decrypt_pdf(&self, Parameters(input): Parameters<DecryptInput>) -> String {
+        security::decrypt_pdf(&input.pdf_path, &input.output, &input.password)
+    }
+
+    #[tool(description = "Set PDF permissions (print, copy, edit) with owner password")]
+    async fn set_permissions(&self, Parameters(input): Parameters<PermissionsInput>) -> String {
+        security::set_permissions(&input.pdf_path, &input.output, &input.owner_password, input.allow_print.unwrap_or(true), input.allow_copy.unwrap_or(false), input.allow_edit.unwrap_or(false))
     }
 
     // === PILLAR 10: Forms ===

@@ -244,3 +244,162 @@ pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String], mode: Option<&
         Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
     }
 }
+
+pub fn sanitize_pdf(pdf_path: &str, output: &str) -> String {
+    match lopdf::Document::load(pdf_path) {
+        Ok(mut doc) => {
+            // Remove JavaScript, embedded files, metadata
+            doc.trailer.remove(b"Info");
+            let page_ids: Vec<lopdf::ObjectId> = doc.get_pages().values().copied().collect();
+            let mut removed = Vec::<&str>::new();
+
+            // Remove JS from catalog
+            if let Ok(catalog_id) = doc.trailer.get(b"Root").and_then(|r| r.as_reference()) {
+                if let Ok(catalog) = doc.get_dictionary_mut(catalog_id) {
+                    if catalog.remove(b"JavaScript").is_some() { removed.push("javascript"); }
+                    if catalog.remove(b"Names").is_some() { removed.push("names_tree"); }
+                    if catalog.remove(b"OpenAction").is_some() { removed.push("open_action"); }
+                    if catalog.remove(b"AA").is_some() { removed.push("additional_actions"); }
+                }
+            }
+
+            // Remove annotations with actions from pages
+            for page_id in page_ids {
+                if let Ok(page) = doc.get_dictionary_mut(page_id) {
+                    page.remove(b"AA");
+                }
+            }
+            removed.push("metadata");
+
+            match doc.save(output) {
+                Ok(_) => serde_json::json!({"output": output, "sanitized": true, "removed": removed}).to_string(),
+                Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+            }
+        }
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
+pub fn remove_metadata(pdf_path: &str, output: &str) -> String {
+    match lopdf::Document::load(pdf_path) {
+        Ok(mut doc) => {
+            doc.trailer.remove(b"Info");
+            // Also remove XMP metadata stream if present
+            if let Ok(catalog_id) = doc.trailer.get(b"Root").and_then(|r| r.as_reference()) {
+                if let Ok(catalog) = doc.get_dictionary_mut(catalog_id) {
+                    catalog.remove(b"Metadata");
+                }
+            }
+            match doc.save(output) {
+                Ok(_) => serde_json::json!({"output": output, "metadata_removed": true}).to_string(),
+                Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+            }
+        }
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
+pub fn detect_active_content(pdf_path: &str) -> String {
+    match lopdf::Document::load(pdf_path) {
+        Ok(doc) => {
+            let mut findings = Vec::<serde_json::Value>::new();
+
+            // Check catalog for JavaScript/OpenAction
+            if let Ok(catalog) = doc.catalog() {
+                if catalog.get(b"JavaScript").is_ok() { findings.push(serde_json::json!({"type": "javascript", "location": "catalog"})); }
+                if catalog.get(b"OpenAction").is_ok() { findings.push(serde_json::json!({"type": "open_action", "location": "catalog"})); }
+                if catalog.get(b"AA").is_ok() { findings.push(serde_json::json!({"type": "additional_actions", "location": "catalog"})); }
+            }
+
+            // Check pages for actions
+            for (page_num, &page_id) in &doc.get_pages() {
+                if let Ok(page) = doc.get_dictionary(page_id) {
+                    if page.get(b"AA").is_ok() { findings.push(serde_json::json!({"type": "page_action", "page": page_num})); }
+                }
+            }
+
+            // Check for embedded files
+            if let Ok(catalog) = doc.catalog() {
+                if let Ok(names) = catalog.get(b"Names").and_then(|n| n.as_dict()) {
+                    if names.get(b"EmbeddedFiles").is_ok() { findings.push(serde_json::json!({"type": "embedded_files"})); }
+                }
+            }
+
+            let risk = if findings.is_empty() { "none" } else if findings.len() > 2 { "high" } else { "medium" };
+            serde_json::json!({"findings": findings, "count": findings.len(), "risk_level": risk}).to_string()
+        }
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
+pub fn decrypt_pdf(pdf_path: &str, output: &str, password: &str) -> String {
+    match lopdf::Document::load(pdf_path) {
+        Ok(mut doc) => {
+            if !doc.is_encrypted() {
+                return serde_json::json!({"error": "PDF is not encrypted"}).to_string();
+            }
+            match doc.decrypt(password) {
+                Ok(_) => {
+                    // Remove encryption dict
+                    doc.trailer.remove(b"Encrypt");
+                    match doc.save(output) {
+                        Ok(_) => serde_json::json!({"output": output, "decrypted": true}).to_string(),
+                        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+                    }
+                }
+                Err(e) => serde_json::json!({"error": format!("Decryption failed: {}", e)}).to_string(),
+            }
+        }
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
+pub fn set_permissions(pdf_path: &str, output: &str, owner_password: &str, allow_print: bool, allow_copy: bool, allow_edit: bool) -> String {
+    // Compute P value from permissions
+    let mut p: i32 = -3392; // base: all restricted
+    if allow_print { p |= 0x04; }  // bit 3
+    if allow_edit { p |= 0x08; }   // bit 4
+    if allow_copy { p |= 0x10; }   // bit 5
+
+    // Re-encrypt with new permissions using our encrypt function
+    // First load, set permissions in encrypt dict
+    match lopdf::Document::load(pdf_path) {
+        Ok(mut doc) => {
+            let file_id: Vec<u8> = {
+                let mut ctx = md5::Context::new();
+                ctx.consume(pdf_path.as_bytes());
+                ctx.consume(chrono::Utc::now().timestamp().to_le_bytes());
+                ctx.finalize().0.to_vec()
+            };
+
+            let key_bytes = 16usize;
+            let revision = 4i64;
+            let o_value = compute_o_value(owner_password.as_bytes(), b"", key_bytes, revision);
+            let enc_key = compute_encryption_key(b"", &o_value, p, &file_id, key_bytes, revision);
+            let u_value = compute_u_value(&enc_key, &file_id, revision);
+
+            let mut encrypt_dict = lopdf::Dictionary::new();
+            encrypt_dict.set(b"Filter".to_vec(), lopdf::Object::Name(b"Standard".to_vec()));
+            encrypt_dict.set(b"V".to_vec(), lopdf::Object::Integer(4));
+            encrypt_dict.set(b"R".to_vec(), lopdf::Object::Integer(revision));
+            encrypt_dict.set(b"Length".to_vec(), lopdf::Object::Integer(128));
+            encrypt_dict.set(b"P".to_vec(), lopdf::Object::Integer(p as i64));
+            encrypt_dict.set(b"O".to_vec(), lopdf::Object::String(o_value, lopdf::StringFormat::Literal));
+            encrypt_dict.set(b"U".to_vec(), lopdf::Object::String(u_value, lopdf::StringFormat::Literal));
+
+            let encrypt_id = doc.add_object(lopdf::Object::Dictionary(encrypt_dict));
+            doc.trailer.set(b"Encrypt".to_vec(), lopdf::Object::Reference(encrypt_id));
+            let id_obj = lopdf::Object::Array(vec![
+                lopdf::Object::String(file_id.clone(), lopdf::StringFormat::Literal),
+                lopdf::Object::String(file_id, lopdf::StringFormat::Literal),
+            ]);
+            doc.trailer.set(b"ID".to_vec(), id_obj);
+
+            match doc.save(output) {
+                Ok(_) => serde_json::json!({"output": output, "permissions": {"print": allow_print, "copy": allow_copy, "edit": allow_edit}}).to_string(),
+                Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+            }
+        }
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
