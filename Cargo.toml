@@ -1,6 +1,6 @@
 [package]
 name = "mcp-pdf"
-version = "3.0.0"
+version = "3.0.1"
 edition = "2021"
 description = "The PDF Operating Layer for AI Agents — 57 tools for inspect, extract, generate, convert, manipulate, secure, and fill PDFs"
 license = "Apache-2.0"
