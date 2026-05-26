@@ -842,27 +842,83 @@ impl PdfServer {
         match lopdf::Document::load(&input.pdf_path) {
             Ok(mut doc) => {
                 let text = input.text.unwrap_or("CONFIDENTIAL".into());
+
+                // Create font object
+                let mut font_dict = lopdf::Dictionary::new();
+                font_dict.set(b"Type".to_vec(), lopdf::Object::Name(b"Font".to_vec()));
+                font_dict.set(b"Subtype".to_vec(), lopdf::Object::Name(b"Type1".to_vec()));
+                font_dict.set(b"BaseFont".to_vec(), lopdf::Object::Name(b"Helvetica".to_vec()));
+                let font_id = doc.add_object(lopdf::Object::Dictionary(font_dict));
+
+                // Create a Form XObject for the watermark (self-contained with own Resources)
+                let wm_content = format!(
+                    "0.85 0.85 0.85 rg BT /Hwm 60 Tf 0.7071 0.7071 -0.7071 0.7071 130 250 Tm ({}) Tj ET",
+                    text
+                );
+                let mut wm_resources = lopdf::Dictionary::new();
+                let mut wm_fonts = lopdf::Dictionary::new();
+                wm_fonts.set(b"Hwm".to_vec(), lopdf::Object::Reference(font_id));
+                wm_resources.set(b"Font".to_vec(), lopdf::Object::Dictionary(wm_fonts));
+
+                let mut wm_dict = lopdf::Dictionary::new();
+                wm_dict.set(b"Type".to_vec(), lopdf::Object::Name(b"XObject".to_vec()));
+                wm_dict.set(b"Subtype".to_vec(), lopdf::Object::Name(b"Form".to_vec()));
+                wm_dict.set(b"BBox".to_vec(), lopdf::Object::Array(vec![
+                    lopdf::Object::Integer(0), lopdf::Object::Integer(0),
+                    lopdf::Object::Integer(595), lopdf::Object::Integer(842),
+                ]));
+                wm_dict.set(b"Resources".to_vec(), lopdf::Object::Dictionary(wm_resources));
+                let wm_stream = lopdf::Stream::new(wm_dict, wm_content.into_bytes());
+                let wm_id = doc.add_object(wm_stream);
+
                 let page_ids: Vec<lopdf::ObjectId> = doc.get_pages().values().copied().collect();
                 for page_id in page_ids {
-                    // Add watermark as content stream overlay
-                    let watermark_content = format!(
-                        "q 0.85 0.85 0.85 rg BT /F1 60 Tf 45 Tm 150 400 Td ({}) Tj ET Q",
-                        text
-                    );
-                    let stream = lopdf::Stream::new(lopdf::Dictionary::new(), watermark_content.into_bytes());
-                    let stream_id = doc.add_object(stream);
-                    // Append to page contents
+                    // Add the XObject to page resources
+                    let res_id = if let Ok(page) = doc.get_dictionary(page_id) {
+                        match page.get(b"Resources") {
+                            Ok(lopdf::Object::Reference(id)) => Some(*id),
+                            _ => None,
+                        }
+                    } else { None };
+
+                    if let Some(rid) = res_id {
+                        if let Ok(res) = doc.get_dictionary_mut(rid) {
+                            if let Ok(xobjs) = res.get_mut(b"XObject").and_then(|x| x.as_dict_mut()) {
+                                xobjs.set(b"Watermark".to_vec(), lopdf::Object::Reference(wm_id));
+                            } else {
+                                let mut xd = lopdf::Dictionary::new();
+                                xd.set(b"Watermark".to_vec(), lopdf::Object::Reference(wm_id));
+                                res.set(b"XObject".to_vec(), lopdf::Object::Dictionary(xd));
+                            }
+                        }
+                    } else if let Ok(page) = doc.get_dictionary_mut(page_id) {
+                        if let Ok(res) = page.get_mut(b"Resources").and_then(|r| r.as_dict_mut()) {
+                            if let Ok(xobjs) = res.get_mut(b"XObject").and_then(|x| x.as_dict_mut()) {
+                                xobjs.set(b"Watermark".to_vec(), lopdf::Object::Reference(wm_id));
+                            } else {
+                                let mut xd = lopdf::Dictionary::new();
+                                xd.set(b"Watermark".to_vec(), lopdf::Object::Reference(wm_id));
+                                res.set(b"XObject".to_vec(), lopdf::Object::Dictionary(xd));
+                            }
+                        }
+                    }
+
+                    // Append "q /Watermark Do Q" to page contents
+                    let invoke_content = b"q /Watermark Do Q".to_vec();
+                    let invoke_stream = lopdf::Stream::new(lopdf::Dictionary::new(), invoke_content);
+                    let invoke_id = doc.add_object(invoke_stream);
+
                     if let Ok(page) = doc.get_dictionary_mut(page_id) {
                         let existing = page.get(b"Contents").ok().cloned();
                         let new_contents = match existing {
                             Some(lopdf::Object::Reference(id)) => {
-                                lopdf::Object::Array(vec![lopdf::Object::Reference(id), lopdf::Object::Reference(stream_id)])
+                                lopdf::Object::Array(vec![lopdf::Object::Reference(id), lopdf::Object::Reference(invoke_id)])
                             }
                             Some(lopdf::Object::Array(mut arr)) => {
-                                arr.push(lopdf::Object::Reference(stream_id));
+                                arr.push(lopdf::Object::Reference(invoke_id));
                                 lopdf::Object::Array(arr)
                             }
-                            _ => lopdf::Object::Reference(stream_id),
+                            _ => lopdf::Object::Reference(invoke_id),
                         };
                         page.set(b"Contents".to_vec(), new_contents);
                     }
