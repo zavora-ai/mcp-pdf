@@ -209,7 +209,7 @@ pub fn create_receipt(data: ReceiptData) -> String {
     layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
     layer.use_text(&format!("Payment method: {}", data.payment_method), 9.0, Mm(15.0), Mm(y), &font);
 
-    // Stamp (rotated text overlay)
+    // Stamp (circular rubber stamp style)
     if let Some(ref stamp) = data.stamp {
         let stamp_text = match stamp.to_lowercase().as_str() {
             "received" => "RECEIVED",
@@ -217,16 +217,32 @@ pub fn create_receipt(data: ReceiptData) -> String {
             "void" => "VOID",
             _ => stamp.as_str(),
         };
-        // Draw stamp as angled colored text
-        layer.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.5, 0.0, None))); // Green for received/paid
-        if stamp_text == "VOID" {
-            layer.set_fill_color(Color::Rgb(Rgb::new(0.8, 0.0, 0.0, None))); // Red for void
-        }
-        layer.begin_text_section();
-        layer.set_font(&bold, 45.0);
-        layer.set_text_matrix(printpdf::TextMatrix::TranslateRotate(Pt(160.0), Pt(340.0), 25.0));
-        layer.write_text(stamp_text, &bold);
-        layer.end_text_section();
+        let is_void = stamp_text == "VOID";
+        let color = if is_void {
+            Rgb::new(0.8, 0.0, 0.0, None) // Red
+        } else {
+            Rgb::new(0.0, 0.45, 0.0, None) // Green
+        };
+
+        // Draw circular border (approximated with oval rect)
+        use printpdf::path::PaintMode;
+        layer.set_outline_color(Color::Rgb(color.clone()));
+        layer.set_outline_thickness(2.5);
+        layer.add_rect(Rect::new(Mm(120.0), Mm(100.0), Mm(185.0), Mm(130.0))
+            .with_mode(PaintMode::Stroke));
+        // Inner border
+        layer.set_outline_thickness(1.0);
+        layer.add_rect(Rect::new(Mm(122.0), Mm(102.0), Mm(183.0), Mm(128.0))
+            .with_mode(PaintMode::Stroke));
+
+        // Stamp text centered
+        layer.set_fill_color(Color::Rgb(color.clone()));
+        layer.use_text(stamp_text, 22.0, Mm(132.0), Mm(112.0), &bold);
+
+        // Date below
+        layer.set_fill_color(Color::Rgb(color));
+        let date_str = chrono::Utc::now().format("%d/%m/%Y").to_string();
+        layer.use_text(&date_str, 9.0, Mm(140.0), Mm(104.0), &font);
     }
 
     match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(&data.output).unwrap())) {
