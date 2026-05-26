@@ -215,34 +215,47 @@ pub fn create_receipt(data: ReceiptData) -> String {
             "received" => "RECEIVED",
             "paid" => "PAID",
             "void" => "VOID",
+            "approved" => "APPROVED",
+            "rejected" => "REJECTED",
             _ => stamp.as_str(),
         };
-        let is_void = stamp_text == "VOID";
+        let is_void = stamp_text == "VOID" || stamp_text == "REJECTED";
         let color = if is_void {
-            Rgb::new(0.8, 0.0, 0.0, None) // Red
+            Rgb::new(0.7, 0.0, 0.0, None)
         } else {
-            Rgb::new(0.0, 0.45, 0.0, None) // Green
+            Rgb::new(0.05, 0.10, 0.35, None) // Dark navy blue like the reference
         };
 
-        // Draw circular border (approximated with oval rect)
-        use printpdf::path::PaintMode;
+        // Center of stamp
+        let cx = 152.5f32; // mm
+        let cy = 115.0f32;
+        let r_outer = 22.0f32;
+        let r_inner = 19.0f32;
+
+        // Draw circles using line segments
         layer.set_outline_color(Color::Rgb(color.clone()));
-        layer.set_outline_thickness(2.5);
-        layer.add_rect(Rect::new(Mm(120.0), Mm(100.0), Mm(185.0), Mm(130.0))
-            .with_mode(PaintMode::Stroke));
-        // Inner border
-        layer.set_outline_thickness(1.0);
-        layer.add_rect(Rect::new(Mm(122.0), Mm(102.0), Mm(183.0), Mm(128.0))
-            .with_mode(PaintMode::Stroke));
+        layer.set_outline_thickness(2.0);
+        draw_circle(&layer, cx, cy, r_outer);
+        layer.set_outline_thickness(1.2);
+        draw_circle(&layer, cx, cy, r_inner);
 
-        // Stamp text centered
+        // Company name at top (straight, centered above main text)
         layer.set_fill_color(Color::Rgb(color.clone()));
-        layer.use_text(stamp_text, 22.0, Mm(132.0), Mm(112.0), &bold);
+        layer.use_text(&data.company.to_uppercase(), 6.0, Mm(cx - 15.0), Mm(cy + 13.0), &bold);
 
-        // Date below
-        layer.set_fill_color(Color::Rgb(color));
-        let date_str = chrono::Utc::now().format("%d/%m/%Y").to_string();
-        layer.use_text(&date_str, 9.0, Mm(140.0), Mm(104.0), &font);
+        // Stars
+        layer.use_text("★  ★  ★", 7.0, Mm(cx - 8.0), Mm(cy + 5.0), &font);
+
+        // Main stamp text (large, bold, centered)
+        let text_x = cx - (stamp_text.len() as f32 * 2.2);
+        layer.use_text(stamp_text, 16.0, Mm(text_x), Mm(cy - 2.0), &bold);
+
+        // Date line
+        let date_str = chrono::Utc::now().format("DATE: %d/%m/%Y").to_string();
+        layer.use_text(&date_str, 6.0, Mm(cx - 13.0), Mm(cy - 10.0), &font);
+
+        // Bottom text
+        layer.use_text("BY: AUTHORIZED", 5.5, Mm(cx - 11.0), Mm(cy - 15.0), &bold);
     }
 
     match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(&data.output).unwrap())) {
@@ -670,4 +683,19 @@ pub fn create_contract(data: ContractData) -> String {
         Ok(_) => serde_json::json!({"output": data.output, "clauses": data.clauses.len(), "parties": data.parties.len()}).to_string(),
         Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
     }
+}
+
+/// Draw a circle approximated with 36 line segments
+fn draw_circle(layer: &printpdf::PdfLayerReference, cx: f32, cy: f32, radius: f32) {
+    use printpdf::*;
+    let segments = 36;
+    let mut points = Vec::new();
+    for i in 0..=segments {
+        let angle = 2.0 * std::f32::consts::PI * (i as f32) / (segments as f32);
+        let x = cx + radius * angle.cos();
+        let y = cy + radius * angle.sin();
+        points.push((Point::new(Mm(x), Mm(y)), false));
+    }
+    let line = Line { points, is_closed: true };
+    layer.add_line(line);
 }
