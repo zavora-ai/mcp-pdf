@@ -2,9 +2,12 @@
 name = "mcp-pdf"
 version = "3.0.0"
 edition = "2021"
-description = "The PDF Operating Layer for AI Agents — 131 tools, 88 templates, 10 verticals"
+description = "The PDF Operating Layer for AI Agents — 57 tools for inspect, extract, generate, convert, manipulate, secure, and fill PDFs"
 license = "Apache-2.0"
 repository = "https://github.com/zavora-ai/mcp-pdf"
+keywords = ["mcp", "pdf", "ai", "document", "enterprise"]
+categories = ["command-line-utilities", "text-processing"]
+readme = "README.md"
 
 [dependencies]
 rmcp = { version = "1.7", features = ["server", "transport-io", "macros"] }

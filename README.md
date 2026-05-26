@@ -1,141 +1,101 @@
-# PDF MCP Server
+# mcp-pdf
+
+The PDF Operating Layer for AI Agents — 57 tools for inspecting, extracting, generating, converting, manipulating, securing, and filling PDFs.
 
 [![Crates.io](https://img.shields.io/crates/v/mcp-pdf.svg)](https://crates.io/crates/mcp-pdf)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![ADK-Rust Enterprise](https://img.shields.io/badge/ADK--Rust-Enterprise-purple.svg)](https://enterprise.adk-rust.com)
 
-Complete PDF operations for AI agents — extract text, tables, forms, generate documents, invoices, merge, split, rotate, compress, encrypt. 20 tools, zero configuration, pure Rust.
+## Why mcp-pdf?
 
-## Why This Exists
+No other MCP server combines read + write + intelligence + security + generation + forms in a single binary. Pure Rust, zero system dependencies, cross-platform.
 
-No comprehensive PDF MCP exists. The market has single-purpose tools:
+| Feature | mcp-pdf | Others |
+|---------|:-------:|:------:|
+| Tools | **57** | 1–11 |
+| Generate styled documents | ✅ | ❌ |
+| 5 certificate styles | ✅ | ❌ |
+| 4 stamp styles + custom colors | ✅ | ❌ |
+| QR codes on invoices | ✅ | ❌ |
+| High-fidelity PDF→Markdown | ✅ | ❌ |
+| True redaction | ✅ | ❌ |
+| AES-128 encryption | ✅ | ❌ |
+| Form detection + filling | ✅ | partial |
+| Flat form filling (coordinates) | ✅ | ❌ |
+| Local-first, zero cloud | ✅ | varies |
 
-| Feature | kodey-pdf | gen-pdf | ninjadoc | **mcp-pdf** |
-|---------|:---------:|:-------:|:--------:|:-----------:|
-| Extract text | ❌ | ❌ | ✅ (1 tool) | ✅ |
-| Extract tables | ❌ | ❌ | ❌ | ✅ |
-| Form detection | ✅ | ❌ | ❌ | ✅ |
-| Form filling | ✅ | ❌ | ❌ | ✅ |
-| Generate PDF | ❌ | ✅ | ❌ | ✅ |
-| Generate invoices | ❌ | ❌ | ❌ | ✅ |
-| Merge/split | ❌ | ❌ | ❌ | ✅ |
-| Rotate/compress | ❌ | ❌ | ❌ | ✅ |
-| Encrypt | ❌ | ❌ | ❌ | ✅ |
-| Signatures | ❌ | ❌ | ❌ | ✅ |
-| Local (no cloud) | ❌ (R2) | ❌ | ❌ | ✅ |
-| **Total tools** | **2** | **1** | **1** | **20** |
-
-## Tools (20)
-
-### Read & Extract (6)
-
-| Tool | Purpose |
-|------|---------|
-| `extract_text` | Extract all text from PDF |
-| `extract_metadata` | Page count, file size |
-| `get_page_count` | Number of pages |
-| `extract_page_text` | Text from a specific page |
-| `extract_tables` | Tables as JSON arrays |
-| `extract_images` | Image info from PDF |
-
-### Forms (4)
-
-| Tool | Purpose |
-|------|---------|
-| `detect_form_fields` | List all form fields |
-| `fill_form` | Fill fields by name |
-| `get_form_data` | Current field values |
-| `flatten_form` | Make fields non-editable |
-
-### Generate (2)
-
-| Tool | Purpose |
-|------|---------|
-| `create_pdf` | Create PDF from text content |
-| `create_invoice` | Generate invoice from structured data |
-
-### Manipulate (4)
-
-| Tool | Purpose |
-|------|---------|
-| `merge_pdfs` | Merge multiple PDFs |
-| `split_pdf` | Extract page ranges |
-| `rotate_pages` | Rotate pages (90/180/270°) |
-| `compress_pdf` | Reduce file size |
-
-### Security (2)
-
-| Tool | Purpose |
-|------|---------|
-| `encrypt_pdf` | Password-protect |
-| `verify_signature` | Check digital signatures |
-
-### Utility (2)
-
-| Tool | Purpose |
-|------|---------|
-| `add_watermark` | Text watermark |
-| `get_info` | Quick PDF summary |
-
-## Installation
+## Install
 
 ```bash
 cargo install mcp-pdf
 ```
 
-Optional system tools (for merge/split/encrypt):
-```bash
-# macOS
-brew install poppler qpdf
-
-# Linux
-apt install poppler-utils qpdf
-```
-
-## Configuration
-
-**Zero configuration.** Just run `mcp-pdf`.
+## Configure (Claude Desktop / Cursor / VS Code)
 
 ```json
-{ "mcpServers": { "pdf": { "command": "mcp-pdf" } } }
+{
+  "mcpServers": {
+    "pdf": {
+      "command": "mcp-pdf"
+    }
+  }
+}
 ```
 
-## Usage Examples
+## Tools (57)
 
-### Extract content
-```
-"What does this contract say?"
-→ extract_text(path="/docs/contract.pdf")
+### Inspect & Understand (8)
+`inspect_pdf` · `classify_pdf` · `health_check_pdf` · `detect_features` · `profile_complexity` · `get_page_count` · `get_info` · `repair_pdf`
 
-"How many pages is the report?"
-→ get_page_count(path="/docs/report.pdf")
-```
+### Extract Content (8)
+`extract_text` · `extract_page_text` · `extract_metadata` · `extract_tables` · `extract_images` · `extract_bookmarks` · `extract_annotations` · `extract_key_values`
 
-### Generate documents
-```
-"Create an invoice for Acme Corp"
-→ create_invoice(output="invoice.pdf", company="Zavora AI", customer="Acme Corp",
-    items=[{description:"Consulting", quantity:10, unit_price_cents:15000}])
-```
+### Generate Documents (9)
+`create_invoice` · `create_receipt` · `create_quote` · `create_statement` · `create_purchase_order` · `create_letter` · `create_certificate` · `create_report` · `create_contract`
 
-### Manipulate
-```
-"Merge these three PDFs"
-→ merge_pdfs(files=["part1.pdf","part2.pdf","part3.pdf"], output="combined.pdf")
+### Convert (6)
+`pdf_to_markdown` · `pdf_to_html` · `pdf_to_json` · `pdf_to_csv` · `markdown_to_pdf` · `images_to_pdf`
 
-"Compress this large PDF"
-→ compress_pdf(path="large.pdf")
-```
+### Manipulate (10)
+`merge_pdfs` · `split_pdf` · `split_by_bookmarks` · `rotate_pages` · `crop_pages` · `reorder_pages` · `delete_pages` · `compress_pdf` · `add_watermark` · `add_headers_footers`
 
-## Tested Live
+### Numbering (2)
+`add_page_numbers` · `add_bates_numbers`
+
+### Security (9)
+`hash_pdf` · `encrypt_pdf` · `decrypt_pdf` · `set_permissions` · `scan_sensitive_data` · `redact_pdf` · `sanitize_pdf` · `remove_metadata` · `detect_active_content`
+
+### Forms (5)
+`detect_form_fields` · `fill_form` · `flatten_form` · `fill_flat_form` · `describe_form_layout`
+
+## Features
+
+- **Logo support** — PNG/JPEG, auto-scaled, RGB-converted for Safari/Preview compatibility
+- **QR codes** — Any data, 4 sizes (tiny/small/medium/large), 5 positions
+- **Stamps** — 4 styles (circle/rectangle/elegant/badge), custom colors, curved text
+- **Certificates** — 5 styles (classic/modern/elegant/academic/minimal)
+- **Redaction** — True content removal using lopdf's replace_partial_text
+- **Encryption** — AES-128 R4, pure Rust (md5 + aes + cbc crates)
+- **High-fidelity conversion** — pdf_oxide for layout-aware markdown/HTML extraction
+- **Form filling** — Both interactive (AcroForm) and flat (coordinate-based) forms
+- **Watermark** — Form XObject overlay, works in all PDF viewers
+
+## Architecture
 
 ```
-✅ create_pdf: Generated test document
-✅ create_invoice: Generated invoice ($8,000.00 total)
-✅ extract_text: "Hello from mcp-pdf! This is a test document."
-✅ get_info: {"pages": 1, "size_kb": 2, "version": "1.3"}
+src/
+├── main.rs              # Entry point (9 lines)
+├── server.rs            # MCP tool router
+└── tools/
+    ├── inspect.rs       # 8 inspect functions
+    ├── extract.rs       # 8 extract functions
+    ├── generate.rs      # 9 document generators
+    ├── convert.rs       # 6 converters (pdf_oxide + comrak)
+    ├── manipulate.rs    # 10 manipulation functions
+    ├── numbering.rs     # Page numbers, Bates, headers/footers, split
+    ├── security.rs      # 9 security functions
+    └── forms.rs         # 5 form functions
 ```
 
 ## License
 
-Apache-2.0 — Part of [ADK-Rust Enterprise](https://enterprise.adk-rust.com)
+Apache-2.0
