@@ -61,6 +61,65 @@ pub struct InvoiceInput {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct InvoiceItem { pub description: String, pub quantity: u32, pub unit_price_cents: i64 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReceiptInput {
+    pub output: String,
+    pub company: String,
+    pub customer: String,
+    pub items: Vec<InvoiceItem>,
+    pub receipt_number: Option<String>,
+    pub payment_method: Option<String>,
+    pub logo: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct LetterInput {
+    pub output: String,
+    pub from_name: String,
+    pub from_company: Option<String>,
+    pub to_name: String,
+    pub to_company: Option<String>,
+    pub subject: Option<String>,
+    pub body: String,
+    pub logo: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CertificateInput {
+    pub output: String,
+    pub recipient: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub issuer: String,
+    pub date: Option<String>,
+    /// Style: classic, modern, elegant, academic, minimal (default: classic)
+    pub style: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReportInput {
+    pub output: String,
+    pub title: String,
+    pub author: Option<String>,
+    pub sections: Vec<ReportSection>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ReportSection { pub heading: String, pub body: String }
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ContractInput {
+    pub output: String,
+    pub title: String,
+    pub parties: Vec<String>,
+    pub effective_date: String,
+    pub clauses: Vec<ContractClause>,
+    pub signatures: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ContractClause { pub title: String, pub body: String }
+
 // --- Tool Router ---
 
 #[tool_router(server_handler)]
@@ -212,5 +271,57 @@ impl PdfServer {
             style: input.style.unwrap_or("minimal".into()),
         };
         generate::create_invoice(data)
+    }
+
+    #[tool(description = "Generate payment receipt PDF")]
+    async fn create_receipt(&self, Parameters(input): Parameters<ReceiptInput>) -> String {
+        let data = generate::ReceiptData {
+            output: input.output, company: input.company, customer: input.customer,
+            receipt_number: input.receipt_number.unwrap_or("REC-001".into()),
+            items: input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect(),
+            payment_method: input.payment_method.unwrap_or("Card".into()),
+            logo: input.logo,
+        };
+        generate::create_receipt(data)
+    }
+
+    #[tool(description = "Generate business letter with letterhead")]
+    async fn create_letter(&self, Parameters(input): Parameters<LetterInput>) -> String {
+        let data = generate::LetterData {
+            output: input.output, from_name: input.from_name, from_company: input.from_company,
+            to_name: input.to_name, to_company: input.to_company,
+            subject: input.subject, body: input.body, logo: input.logo,
+        };
+        generate::create_letter(data)
+    }
+
+    #[tool(description = "Generate certificate (styles: classic, modern, elegant, academic, minimal)")]
+    async fn create_certificate(&self, Parameters(input): Parameters<CertificateInput>) -> String {
+        let data = generate::CertificateData {
+            output: input.output, recipient: input.recipient, title: input.title,
+            description: input.description, issuer: input.issuer, date: input.date,
+            style: input.style.unwrap_or("classic".into()),
+        };
+        generate::create_certificate(data)
+    }
+
+    #[tool(description = "Generate multi-section report PDF")]
+    async fn create_report(&self, Parameters(input): Parameters<ReportInput>) -> String {
+        let data = generate::ReportData {
+            output: input.output, title: input.title, author: input.author,
+            sections: input.sections.into_iter().map(|s| (s.heading, s.body)).collect(),
+        };
+        generate::create_report(data)
+    }
+
+    #[tool(description = "Generate contract with clauses and signature blocks")]
+    async fn create_contract(&self, Parameters(input): Parameters<ContractInput>) -> String {
+        let data = generate::ContractData {
+            output: input.output, title: input.title, parties: input.parties,
+            effective_date: input.effective_date,
+            clauses: input.clauses.into_iter().map(|c| (c.title, c.body)).collect(),
+            signatures: input.signatures,
+        };
+        generate::create_contract(data)
     }
 }
