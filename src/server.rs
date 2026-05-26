@@ -1,7 +1,7 @@
 use rmcp::{tool, tool_router, schemars};
 use rmcp::handler::server::wrapper::Parameters;
 use serde::Deserialize;
-use crate::tools::{inspect, extract, manipulate, numbering, generate, security, forms};
+use crate::tools::{inspect, extract, manipulate, numbering, generate, security, forms, convert};
 
 #[derive(Clone)]
 pub struct PdfServer;
@@ -171,6 +171,19 @@ pub struct FlatFormEntry {
     pub y: f32,
     pub text: String,
     pub font_size: Option<f32>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct MarkdownToPdfInput {
+    pub markdown: String,
+    pub output: String,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ImagesToPdfInput {
+    pub image_paths: Vec<String>,
+    pub output: String,
 }
 
 // --- Tool Router ---
@@ -432,5 +445,36 @@ impl PdfServer {
     #[tool(description = "Describe form layout: page size, text labels, and detected field underlines with positions in mm. Use before fill_flat_form to find correct coordinates.")]
     async fn describe_form_layout(&self, Parameters(input): Parameters<PageTextInput>) -> String {
         forms::describe_form_layout(&input.pdf_path, input.page_number)
+    }
+
+    // === PILLAR 6: Convert ===
+    #[tool(description = "Convert PDF to Markdown with high fidelity (headings, tables, layout preserved)")]
+    async fn pdf_to_markdown(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
+        convert::pdf_to_markdown(&input.pdf_path, None)
+    }
+
+    #[tool(description = "Convert PDF to HTML with structure preservation")]
+    async fn pdf_to_html(&self, Parameters(input): Parameters<OutputInput>) -> String {
+        convert::pdf_to_html(&input.pdf_path, &input.output)
+    }
+
+    #[tool(description = "Convert PDF to structured JSON (text + markdown per page)")]
+    async fn pdf_to_json(&self, Parameters(input): Parameters<OutputInput>) -> String {
+        convert::pdf_to_json(&input.pdf_path, &input.output)
+    }
+
+    #[tool(description = "Extract tables from PDF as CSV")]
+    async fn pdf_to_csv(&self, Parameters(input): Parameters<OutputInput>) -> String {
+        convert::pdf_to_csv(&input.pdf_path, &input.output)
+    }
+
+    #[tool(description = "Convert Markdown to styled PDF")]
+    async fn markdown_to_pdf(&self, Parameters(input): Parameters<MarkdownToPdfInput>) -> String {
+        convert::markdown_to_pdf(&input.markdown, &input.output, input.title.as_deref())
+    }
+
+    #[tool(description = "Convert images to PDF (one image per page, auto-scaled to fit)")]
+    async fn images_to_pdf(&self, Parameters(input): Parameters<ImagesToPdfInput>) -> String {
+        convert::images_to_pdf(&input.image_paths, &input.output)
     }
 }
