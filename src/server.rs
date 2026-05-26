@@ -167,7 +167,7 @@ pub struct FlatFormEntry {
     pub page: u32,
     /// X position in mm from left edge
     pub x: f32,
-    /// Y position in mm from bottom edge
+    /// Y position in mm from TOP edge (like reading a form top-to-bottom)
     pub y: f32,
     pub text: String,
     pub font_size: Option<f32>,

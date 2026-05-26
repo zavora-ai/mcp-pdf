@@ -225,16 +225,21 @@ pub fn fill_flat_form(pdf_path: &str, output: &str, entries: &[FlatFormEntry]) -
             }
 
             // Now overlay text entries
+            // User provides x,y in mm from TOP-LEFT (natural for forms)
+            // PDF uses points from BOTTOM-LEFT
+            // A4: 297mm tall = 842pt
+            let page_height_mm = 297.0f32;
             let mut filled = 0u32;
             for entry in entries {
                 let pages = doc.get_pages();
                 if let Some(&page_id) = pages.get(&entry.page) {
                     let fs = entry.font_size.unwrap_or(10.0);
+                    // Convert: x stays same (mm→pt), y flips (from top to from bottom)
+                    let x_pt = entry.x * 2.8346;
+                    let y_pt = (page_height_mm - entry.y) * 2.8346;
                     let content = format!(
                         "BT /Hff {} Tf {} {} Td ({}) Tj ET",
-                        fs,
-                        entry.x * 2.8346,
-                        entry.y * 2.8346,
+                        fs, x_pt, y_pt,
                         entry.text.replace('(', "\\(").replace(')', "\\)")
                     );
                     let stream = lopdf::Stream::new(lopdf::Dictionary::new(), content.into_bytes());
