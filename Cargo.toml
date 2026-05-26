@@ -24,5 +24,6 @@ aes = "0.8"
 cbc = "0.1"
 md5 = "0.8"
 rand = "0.9"
+qrcode = "0.14"
 
 [workspace]

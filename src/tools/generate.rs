@@ -8,6 +8,7 @@ pub struct InvoiceData {
     pub invoice_number: String,
     pub logo: Option<String>,
     pub style: String,
+    pub qr_data: Option<String>,
 }
 
 pub fn create_invoice(data: InvoiceData) -> String {
@@ -103,6 +104,42 @@ pub fn create_invoice(data: InvoiceData) -> String {
     layer.use_text("Total", 10.0, Mm(140.0), Mm(y), &bold);
     layer.use_text(&format!("${:.2}", total as f64 / 100.0), 12.0, Mm(172.0), Mm(y), &bold);
 
+    // QR Code
+    if let Some(ref qr_data) = data.qr_data {
+        if let Ok(qr) = qrcode::QrCode::new(qr_data.as_bytes()) {
+            let modules = qr.to_colors();
+            let size = qr.width() as u32;
+            let scale = 3u32;
+            let img_size = size * scale;
+            // Build RGB image from QR modules
+            let mut rgb = vec![255u8; (img_size * img_size * 3) as usize];
+            for y in 0..size {
+                for x in 0..size {
+                    let is_dark = modules[(y * size + x) as usize] == qrcode::Color::Dark;
+                    if is_dark {
+                        for dy in 0..scale {
+                            for dx in 0..scale {
+                                let px = ((y * scale + dy) * img_size + (x * scale + dx)) as usize * 3;
+                                rgb[px] = 0; rgb[px+1] = 0; rgb[px+2] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            let image = Image::from(ImageXObject {
+                width: Px(img_size as usize), height: Px(img_size as usize),
+                color_space: ColorSpace::Rgb, bits_per_component: ColorBits::Bit8,
+                interpolate: false, image_data: rgb,
+                image_filter: None, clipping_bbox: None, smask: None,
+            });
+            image.add_to_layer(layer.clone(), ImageTransform {
+                translate_x: Some(Mm(170.0)), translate_y: Some(Mm(30.0)),
+                scale_x: Some(0.35), scale_y: Some(0.35),
+                ..Default::default()
+            });
+        }
+    }
+
     // Footer
     layer.set_fill_color(Color::Rgb(Rgb::new(0.7, 0.7, 0.7, None)));
     layer.use_text("Thank you for your business.", 9.0, Mm(15.0), Mm(20.0), &font);
@@ -124,6 +161,7 @@ pub struct ReceiptData {
     pub items: Vec<(String, u32, i64)>,
     pub payment_method: String,
     pub _logo: Option<String>,
+    pub stamp: Option<String>, // "received", "paid", "void", or custom text
 }
 
 pub fn create_receipt(data: ReceiptData) -> String {
@@ -171,8 +209,28 @@ pub fn create_receipt(data: ReceiptData) -> String {
     layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
     layer.use_text(&format!("Payment method: {}", data.payment_method), 9.0, Mm(15.0), Mm(y), &font);
 
+    // Stamp (rotated text overlay)
+    if let Some(ref stamp) = data.stamp {
+        let stamp_text = match stamp.to_lowercase().as_str() {
+            "received" => "RECEIVED",
+            "paid" => "PAID",
+            "void" => "VOID",
+            _ => stamp.as_str(),
+        };
+        // Draw stamp as angled colored text
+        layer.set_fill_color(Color::Rgb(Rgb::new(0.0, 0.5, 0.0, None))); // Green for received/paid
+        if stamp_text == "VOID" {
+            layer.set_fill_color(Color::Rgb(Rgb::new(0.8, 0.0, 0.0, None))); // Red for void
+        }
+        layer.begin_text_section();
+        layer.set_font(&bold, 45.0);
+        layer.set_text_matrix(printpdf::TextMatrix::TranslateRotate(Pt(160.0), Pt(340.0), 25.0));
+        layer.write_text(stamp_text, &bold);
+        layer.end_text_section();
+    }
+
     match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(&data.output).unwrap())) {
-        Ok(_) => serde_json::json!({"output": data.output, "total": format!("${:.2}", total as f64 / 100.0)}).to_string(),
+        Ok(_) => serde_json::json!({"output": data.output, "total": format!("${:.2}", total as f64 / 100.0), "stamp": data.stamp}).to_string(),
         Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
     }
 }

@@ -56,6 +56,8 @@ pub struct InvoiceInput {
     pub invoice_number: Option<String>,
     pub logo: Option<String>,
     pub style: Option<String>,
+    /// Data to encode as QR code (e.g., payment URL, invoice reference)
+    pub qr_data: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -70,6 +72,8 @@ pub struct ReceiptInput {
     pub receipt_number: Option<String>,
     pub payment_method: Option<String>,
     pub logo: Option<String>,
+    /// Stamp text: "received", "paid", "void", or custom
+    pub stamp: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -291,6 +295,7 @@ impl PdfServer {
             invoice_number: input.invoice_number.unwrap_or("INV-001".into()),
             logo: input.logo,
             style: input.style.unwrap_or("minimal".into()),
+            qr_data: input.qr_data,
         };
         generate::create_invoice(data)
     }
@@ -303,6 +308,7 @@ impl PdfServer {
             items: input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect(),
             payment_method: input.payment_method.unwrap_or("Card".into()),
             _logo: input.logo,
+            stamp: input.stamp,
         };
         generate::create_receipt(data)
     }
