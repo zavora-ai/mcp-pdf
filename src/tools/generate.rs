@@ -256,6 +256,93 @@ pub fn create_receipt(data: ReceiptData) -> String {
             let date_str = chrono::Utc::now().format("DATE: %d/%m/%Y").to_string();
             let date_w = date_str.len() as f32 * 5.0 * 0.6 * 0.353;
             layer.use_text(&date_str, 5.0, Mm(cx - date_w / 2.0), Mm(cy - 7.5), &font);
+
+        } else if data.stamp_style == "elegant" {
+            // Style 3: Elegant circle — single border, curved text, decorative lines
+            let cx = 152.5f32;
+            let cy = 115.0f32;
+            let radius = 22.0f32;
+
+            layer.set_outline_color(Color::Rgb(color.clone()));
+            layer.set_outline_thickness(2.0);
+            draw_circle(&layer, cx, cy, radius);
+            layer.set_outline_thickness(1.0);
+            draw_circle(&layer, cx, cy, radius - 1.5);
+
+            // Curved company name at top
+            layer.set_fill_color(Color::Rgb(color.clone()));
+            let top_text = data.company.to_uppercase();
+            draw_text_on_arc(&layer, &font, &top_text, cx, cy, radius - 5.0, 5.5, true);
+
+            // Main text centered (larger, like a signature)
+            let font_size = 16.0f32;
+            let text_w = stamp_text.len() as f32 * font_size * 0.6 * 0.353;
+            layer.use_text(stamp_text, font_size, Mm(cx - text_w / 2.0), Mm(cy - 1.5), &bold);
+
+            // Decorative lines above and below main text
+            layer.set_outline_thickness(0.5);
+            // Top flourish: ~~ line ~~
+            layer.add_line(Line { points: vec![
+                (Point::new(Mm(cx - 12.0), Mm(cy + 5.0)), false),
+                (Point::new(Mm(cx - 4.0), Mm(cy + 6.0)), false),
+                (Point::new(Mm(cx + 4.0), Mm(cy + 6.0)), false),
+                (Point::new(Mm(cx + 12.0), Mm(cy + 5.0)), false),
+            ], is_closed: false });
+            // Bottom flourish
+            layer.add_line(Line { points: vec![
+                (Point::new(Mm(cx - 12.0), Mm(cy - 4.5)), false),
+                (Point::new(Mm(cx - 4.0), Mm(cy - 5.5)), false),
+                (Point::new(Mm(cx + 4.0), Mm(cy - 5.5)), false),
+                (Point::new(Mm(cx + 12.0), Mm(cy - 4.5)), false),
+            ], is_closed: false });
+
+            // Date/email at bottom arc
+            let date_str = chrono::Utc::now().format("%d/%m/%Y").to_string();
+            draw_text_on_arc(&layer, &font, &date_str, cx, cy, radius - 5.0, 5.0, false);
+
+        } else if data.stamp_style == "badge" {
+            // Style 4: Badge/starburst — jagged edge, diagonal banner, bold text
+            let cx = 152.5f32;
+            let cy = 115.0f32;
+            let r = 22.0f32;
+            let spikes = 24u32;
+
+            // Draw starburst/jagged circle
+            layer.set_outline_color(Color::Rgb(color.clone()));
+            layer.set_outline_thickness(1.5);
+            let mut points = Vec::new();
+            for i in 0..(spikes * 2) {
+                let angle = 2.0 * std::f32::consts::PI * (i as f32) / (spikes as f32 * 2.0);
+                let radius = if i % 2 == 0 { r } else { r - 3.0 };
+                let x = cx + radius * angle.cos();
+                let y = cy + radius * angle.sin();
+                points.push((Point::new(Mm(x), Mm(y)), false));
+            }
+            layer.add_line(Line { points, is_closed: true });
+
+            // Diagonal banner (two parallel lines at ~15 degrees)
+            layer.set_outline_thickness(0.8);
+            let bh = 5.5f32; // banner half-height
+            // Upper banner line
+            layer.add_line(Line { points: vec![
+                (Point::new(Mm(cx - 18.0), Mm(cy + bh + 1.5)), false),
+                (Point::new(Mm(cx + 18.0), Mm(cy + bh - 1.5)), false),
+            ], is_closed: false });
+            // Lower banner line
+            layer.add_line(Line { points: vec![
+                (Point::new(Mm(cx - 18.0), Mm(cy - bh + 1.5)), false),
+                (Point::new(Mm(cx + 18.0), Mm(cy - bh - 1.5)), false),
+            ], is_closed: false });
+
+            // Main text centered (slightly rotated feel via position)
+            layer.set_fill_color(Color::Rgb(color.clone()));
+            let font_size = 14.0f32;
+            let text_w = stamp_text.len() as f32 * font_size * 0.6 * 0.353;
+            layer.use_text(stamp_text, font_size, Mm(cx - text_w / 2.0), Mm(cy - 1.5), &bold);
+
+            // Stars below
+            layer.use_text("★ ★ ★ ★ ★", 5.0, Mm(cx - 8.0), Mm(cy - 9.0), &font);
+
         } else {
             // Circle stamp (default)
             let cx = 152.5f32;
