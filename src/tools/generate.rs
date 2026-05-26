@@ -123,7 +123,7 @@ pub struct ReceiptData {
     pub receipt_number: String,
     pub items: Vec<(String, u32, i64)>,
     pub payment_method: String,
-    pub logo: Option<String>,
+    pub _logo: Option<String>,
 }
 
 pub fn create_receipt(data: ReceiptData) -> String {
@@ -185,7 +185,7 @@ pub struct LetterData {
     pub to_company: Option<String>,
     pub subject: Option<String>,
     pub body: String,
-    pub logo: Option<String>,
+    pub _logo: Option<String>,
 }
 
 pub fn create_letter(data: LetterData) -> String {
@@ -259,8 +259,6 @@ pub fn create_certificate(data: CertificateData) -> String {
     let layer = doc.get_page(page1).get_layer(layer1);
     let date = data.date.unwrap_or_else(|| chrono::Utc::now().format("%B %d, %Y").to_string());
 
-    use printpdf::path::PaintMode;
-
     match data.style.as_str() {
         "modern" => render_cert_modern(&layer, &font, &bold, &data.recipient, &data.title, data.description.as_deref(), &data.issuer, &date),
         "elegant" => render_cert_elegant(&layer, &font, &bold, &data.recipient, &data.title, data.description.as_deref(), &data.issuer, &date),
@@ -277,7 +275,6 @@ pub fn create_certificate(data: CertificateData) -> String {
 
 fn render_cert_classic(layer: &PdfLayerReference, font: &IndirectFontRef, bold: &IndirectFontRef, recipient: &str, title: &str, desc: Option<&str>, issuer: &str, date: &str) {
     use printpdf::path::PaintMode;
-    // Double border (outer gold, inner dark)
     layer.set_outline_color(Color::Rgb(Rgb::new(0.72, 0.53, 0.04, None)));
     layer.set_outline_thickness(4.0);
     layer.add_rect(Rect::new(Mm(8.0), Mm(8.0), Mm(289.0), Mm(202.0)).with_mode(PaintMode::Stroke));

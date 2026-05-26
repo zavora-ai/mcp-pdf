@@ -1,7 +1,7 @@
 use rmcp::{tool, tool_router, schemars};
 use rmcp::handler::server::wrapper::Parameters;
 use serde::Deserialize;
-use crate::tools::{inspect, extract, manipulate, numbering, generate};
+use crate::tools::{inspect, extract, manipulate, numbering, generate, security};
 
 #[derive(Clone)]
 pub struct PdfServer;
@@ -119,6 +119,15 @@ pub struct ContractInput {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ContractClause { pub title: String, pub body: String }
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EncryptInput { pub pdf_path: String, pub output: String, pub owner_password: String, pub user_password: Option<String> }
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ScanSensitiveInput { pub pdf_path: String, pub categories: Option<Vec<String>> }
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RedactInput { pub pdf_path: String, pub output: String, pub terms: Vec<String> }
 
 // --- Tool Router ---
 
@@ -280,7 +289,7 @@ impl PdfServer {
             receipt_number: input.receipt_number.unwrap_or("REC-001".into()),
             items: input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect(),
             payment_method: input.payment_method.unwrap_or("Card".into()),
-            logo: input.logo,
+            _logo: input.logo,
         };
         generate::create_receipt(data)
     }
@@ -290,7 +299,7 @@ impl PdfServer {
         let data = generate::LetterData {
             output: input.output, from_name: input.from_name, from_company: input.from_company,
             to_name: input.to_name, to_company: input.to_company,
-            subject: input.subject, body: input.body, logo: input.logo,
+            subject: input.subject, body: input.body, _logo: input.logo,
         };
         generate::create_letter(data)
     }
@@ -323,5 +332,26 @@ impl PdfServer {
             signatures: input.signatures,
         };
         generate::create_contract(data)
+    }
+
+    // === PILLAR 11: Security ===
+    #[tool(description = "SHA-256 hash of a PDF for integrity verification")]
+    async fn hash_pdf(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
+        security::hash_pdf(&input.pdf_path)
+    }
+
+    #[tool(description = "Encrypt PDF with password protection")]
+    async fn encrypt_pdf(&self, Parameters(input): Parameters<EncryptInput>) -> String {
+        security::encrypt_pdf(&input.pdf_path, &input.output, &input.owner_password, input.user_password.as_deref())
+    }
+
+    #[tool(description = "Scan PDF for sensitive data: emails, phones, SSNs, credit cards")]
+    async fn scan_sensitive_data(&self, Parameters(input): Parameters<ScanSensitiveInput>) -> String {
+        security::scan_sensitive_data(&input.pdf_path, input.categories.as_deref())
+    }
+
+    #[tool(description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)")]
+    async fn redact_pdf(&self, Parameters(input): Parameters<RedactInput>) -> String {
+        security::redact_pdf(&input.pdf_path, &input.output, &input.terms)
     }
 }
