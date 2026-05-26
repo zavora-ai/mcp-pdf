@@ -228,8 +228,8 @@ pub fn create_receipt(data: ReceiptData) -> String {
 
         let cx = 152.5f32;
         let cy = 115.0f32;
-        let r_outer = 22.0f32;
-        let r_inner = 19.5f32;
+        let r_outer = 24.0f32;
+        let r_inner = 18.0f32;
 
         // Draw two circles
         layer.set_outline_color(Color::Rgb(color.clone()));
@@ -238,36 +238,36 @@ pub fn create_receipt(data: ReceiptData) -> String {
         layer.set_outline_thickness(1.5);
         draw_circle(&layer, cx, cy, r_inner);
 
-        // Curved text: company name along top arc
+        // Curved text between circles
         layer.set_fill_color(Color::Rgb(color.clone()));
+        let arc_radius = (r_outer + r_inner) / 2.0;
         let top_text = data.company.to_uppercase();
-        draw_text_on_arc(&layer, &bold, &top_text, cx, cy, r_inner - 3.0, 5.5, true);
+        draw_text_on_arc(&layer, &bold, &top_text, cx, cy, arc_radius, 6.5, true);
+        draw_text_on_arc(&layer, &bold, "BY: AUTHORIZED", cx, cy, arc_radius, 6.0, false);
 
-        // Curved text: "BY: AUTHORIZED" along bottom arc
-        draw_text_on_arc(&layer, &bold, "BY: AUTHORIZED", cx, cy, r_inner - 3.0, 5.0, false);
-
-        // Stars on left and right of center
-        layer.use_text("★", 8.0, Mm(cx - 16.0), Mm(cy - 1.0), &font);
-        layer.use_text("★", 8.0, Mm(cx + 14.0), Mm(cy - 1.0), &font);
-
-        // Main stamp text (large, bold, centered)
-        let text_x = cx - (stamp_text.len() as f32 * 1.8);
-        layer.use_text(stamp_text, 14.0, Mm(text_x), Mm(cy - 1.5), &bold);
-
-        // Date line below center text
-        let date_str = chrono::Utc::now().format("DATE: %d / %m / %Y").to_string();
-        layer.use_text(&date_str, 5.5, Mm(cx - 13.0), Mm(cy - 7.5), &font);
-
-        // Small line above and below main text
-        layer.set_outline_thickness(0.5);
+        // Inner content: centered within r_inner
+        // Horizontal line above text
+        layer.set_outline_thickness(0.8);
         layer.add_line(Line { points: vec![
-            (Point::new(Mm(cx - 14.0), Mm(cy + 4.5)), false),
-            (Point::new(Mm(cx + 14.0), Mm(cy + 4.5)), false),
+            (Point::new(Mm(cx - 15.0), Mm(cy + 5.0)), false),
+            (Point::new(Mm(cx + 15.0), Mm(cy + 5.0)), false),
         ], is_closed: false });
+
+        // RECEIVED - centered (font 14pt, approx 3.5mm per char for Helvetica Bold)
+        let char_w = 14.0 * 0.35 * 0.353; // ~1.73mm per char at 14pt
+        let text_w = stamp_text.len() as f32 * char_w;
+        layer.use_text(stamp_text, 14.0, Mm(cx - text_w / 2.0), Mm(cy), &bold);
+
+        // Horizontal line below text
         layer.add_line(Line { points: vec![
-            (Point::new(Mm(cx - 14.0), Mm(cy - 5.5)), false),
-            (Point::new(Mm(cx + 14.0), Mm(cy - 5.5)), false),
+            (Point::new(Mm(cx - 15.0), Mm(cy - 2.5)), false),
+            (Point::new(Mm(cx + 15.0), Mm(cy - 2.5)), false),
         ], is_closed: false });
+
+        // DATE centered below
+        let date_str = chrono::Utc::now().format("DATE: %d/%m/%Y").to_string();
+        let date_w = date_str.len() as f32 * 5.0 * 0.35 * 0.353;
+        layer.use_text(&date_str, 5.0, Mm(cx - date_w / 2.0), Mm(cy - 6.5), &font);
     }
 
     match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(&data.output).unwrap())) {
@@ -716,35 +716,37 @@ fn draw_circle(layer: &printpdf::PdfLayerReference, cx: f32, cy: f32, radius: f3
 fn draw_text_on_arc(layer: &printpdf::PdfLayerReference, font: &printpdf::IndirectFontRef, text: &str, cx: f32, cy: f32, radius: f32, font_size: f32, top: bool) {
     use printpdf::*;
     let char_count = text.chars().count() as f32;
-    // Spread characters across an arc
-    let arc_span = (char_count * 0.12).min(2.4); // radians of arc to use
-    let start_angle = if top {
-        std::f32::consts::FRAC_PI_2 + arc_span / 2.0 // start from left going right on top
-    } else {
-        -std::f32::consts::FRAC_PI_2 + arc_span / 2.0 // bottom arc
-    };
-    let direction = -1.0f32; // clockwise
+    let arc_span = (char_count * 0.18).min(2.8); // wider spacing between chars
 
     for (i, ch) in text.chars().enumerate() {
-        let angle = start_angle + direction * (i as f32 / char_count) * arc_span;
+        let t = (i as f32 + 0.5) / char_count; // 0..1 normalized position
+
+        let angle = if top {
+            // Top arc: go from left to right (PI/2+span/2 down to PI/2-span/2)
+            std::f32::consts::FRAC_PI_2 + arc_span / 2.0 - t * arc_span
+        } else {
+            // Bottom arc: go from left to right (-PI/2-span/2 up to -PI/2+span/2)
+            -std::f32::consts::FRAC_PI_2 - arc_span / 2.0 + t * arc_span
+        };
+
         let x = cx + radius * angle.cos();
         let y = cy + radius * angle.sin();
 
-        // Each character placed at position, rotated to follow the arc
+        // Rotation: character upright relative to reading direction
         let rotation = if top {
-            angle - std::f32::consts::FRAC_PI_2 // tangent direction
+            angle - std::f32::consts::FRAC_PI_2
         } else {
             angle + std::f32::consts::FRAC_PI_2
         };
 
-        layer.begin_text_section();
-        layer.set_font(font, font_size);
         let cos_r = rotation.cos();
         let sin_r = rotation.sin();
-        // PDF text matrix: [cos sin -sin cos tx ty]
-        let tx = Pt(x * 2.8346); // mm to pt
-        let ty = Pt(y * 2.8346);
-        layer.set_text_matrix(TextMatrix::Raw([cos_r, sin_r, -sin_r, cos_r, tx.0, ty.0]));
+        let tx = x * 2.8346; // mm to pt
+        let ty = y * 2.8346;
+
+        layer.begin_text_section();
+        layer.set_font(font, font_size);
+        layer.set_text_matrix(TextMatrix::Raw([cos_r, sin_r, -sin_r, cos_r, tx, ty]));
         layer.write_text(&ch.to_string(), font);
         layer.end_text_section();
     }
