@@ -216,6 +216,14 @@ pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String]) -> String {
             // Strip metadata
             doc.trailer.remove(b"Info");
 
+            if redacted_count == 0 {
+                return serde_json::json!({
+                    "error": "no_matches",
+                    "message": format!("None of the {} terms were found in the document", terms.len()),
+                    "terms_searched": terms,
+                }).to_string();
+            }
+
             match doc.save(output) {
                 Ok(_) => {
                     let hash = Sha256::digest(&std::fs::read(output).unwrap_or_default());
