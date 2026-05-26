@@ -1,0 +1,34 @@
+[server]
+name = "mcp-pdf"
+version = "3.0.0"
+description = "The PDF Operating Layer for AI Agents"
+author = "Zavora AI"
+license = "Apache-2.0"
+repository = "https://github.com/zavora-ai/mcp-pdf"
+homepage = "https://zavora.ai"
+
+[capabilities]
+tools = true
+resources = false
+prompts = false
+
+[runtime]
+transport = "stdio"
+binary = "mcp-pdf"
+install = "cargo install mcp-pdf"
+
+[tools]
+count = 57
+categories = ["inspect", "extract", "generate", "convert", "manipulate", "numbering", "security", "forms"]
+
+[tools.risk_classes]
+read_only = ["inspect_pdf", "classify_pdf", "health_check_pdf", "detect_features", "profile_complexity", "get_page_count", "get_info", "extract_text", "extract_page_text", "extract_metadata", "extract_tables", "extract_images", "extract_bookmarks", "extract_annotations", "extract_key_values", "detect_form_fields", "describe_form_layout", "scan_sensitive_data", "detect_active_content", "hash_pdf", "pdf_to_markdown"]
+write_local = ["create_invoice", "create_receipt", "create_quote", "create_statement", "create_purchase_order", "create_letter", "create_certificate", "create_report", "create_contract", "merge_pdfs", "split_pdf", "split_by_bookmarks", "rotate_pages", "crop_pages", "reorder_pages", "delete_pages", "compress_pdf", "add_watermark", "add_headers_footers", "add_page_numbers", "add_bates_numbers", "repair_pdf", "fill_form", "flatten_form", "fill_flat_form", "pdf_to_html", "pdf_to_json", "pdf_to_csv", "markdown_to_pdf", "images_to_pdf", "remove_metadata", "sanitize_pdf"]
+security_sensitive = ["encrypt_pdf", "decrypt_pdf", "set_permissions", "redact_pdf"]
+
+[credentials]
+required = false
+
+[health]
+endpoint = "tools/list"
+interval_seconds = 30

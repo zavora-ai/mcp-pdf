@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="system-ui,-apple-system,sans-serif">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0A1A33"/>
+      <stop offset="100%" style="stop-color:#1a3a5c"/>
+    </linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/></filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="520" fill="#f8f9fa" rx="12"/>
+
+  <!-- Header -->
+  <rect width="900" height="60" fill="url(#headerGrad)" rx="12"/>
+  <rect y="50" width="900" height="10" fill="url(#headerGrad)"/>
+  <text x="30" y="38" fill="white" font-size="22" font-weight="bold">mcp-pdf v3.0</text>
+  <text x="200" y="38" fill="#8ab4f8" font-size="14">The PDF Operating Layer for AI Agents</text>
+  <text x="680" y="38" fill="#aaa" font-size="12">57 tools · 17MB · Pure Rust</text>
+
+  <!-- AI Agent -->
+  <rect x="30" y="85" width="140" height="70" rx="8" fill="#e8f0fe" stroke="#4285f4" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="100" y="115" text-anchor="middle" font-size="11" font-weight="bold" fill="#1a73e8">AI Agent</text>
+  <text x="100" y="132" text-anchor="middle" font-size="9" fill="#5f6368">Claude / GPT / Cursor</text>
+  <text x="100" y="145" text-anchor="middle" font-size="9" fill="#5f6368">Kiro / Custom</text>
+
+  <!-- Arrow -->
+  <path d="M170 120 L220 120" stroke="#4285f4" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <text x="195" y="112" text-anchor="middle" font-size="8" fill="#4285f4">MCP/stdio</text>
+
+  <!-- Server Box -->
+  <rect x="220" y="75" width="650" height="430" rx="10" fill="white" stroke="#dadce0" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="240" y="100" font-size="13" font-weight="bold" fill="#202124">mcp-pdf Server (rmcp 1.7)</text>
+
+  <!-- Tool Pillars -->
+  <!-- Row 1 -->
+  <rect x="240" y="115" width="145" height="85" rx="6" fill="#e8f5e9" stroke="#34a853" stroke-width="1"/>
+  <text x="312" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#1b5e20">Inspect (8)</text>
+  <text x="250" y="148" font-size="8" fill="#33691e">inspect_pdf · classify</text>
+  <text x="250" y="160" font-size="8" fill="#33691e">health_check · features</text>
+  <text x="250" y="172" font-size="8" fill="#33691e">complexity · repair</text>
+  <text x="250" y="184" font-size="8" fill="#33691e">get_info · page_count</text>
+
+  <rect x="395" y="115" width="145" height="85" rx="6" fill="#e3f2fd" stroke="#1976d2" stroke-width="1"/>
+  <text x="467" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#0d47a1">Extract (8)</text>
+  <text x="405" y="148" font-size="8" fill="#1565c0">text · page_text · metadata</text>
+  <text x="405" y="160" font-size="8" fill="#1565c0">tables · images · bookmarks</text>
+  <text x="405" y="172" font-size="8" fill="#1565c0">annotations · key_values</text>
+
+  <rect x="550" y="115" width="145" height="85" rx="6" fill="#fce4ec" stroke="#c62828" stroke-width="1"/>
+  <text x="622" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#b71c1c">Generate (9)</text>
+  <text x="560" y="148" font-size="8" fill="#c62828">invoice · receipt · quote</text>
+  <text x="560" y="160" font-size="8" fill="#c62828">statement · PO · letter</text>
+  <text x="560" y="172" font-size="8" fill="#c62828">certificate · report</text>
+  <text x="560" y="184" font-size="8" fill="#c62828">contract</text>
+
+  <rect x="705" y="115" width="145" height="85" rx="6" fill="#fff3e0" stroke="#e65100" stroke-width="1"/>
+  <text x="777" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#bf360c">Convert (6)</text>
+  <text x="715" y="148" font-size="8" fill="#e65100">pdf→markdown · html</text>
+  <text x="715" y="160" font-size="8" fill="#e65100">pdf→json · csv</text>
+  <text x="715" y="172" font-size="8" fill="#e65100">markdown→pdf</text>
+  <text x="715" y="184" font-size="8" fill="#e65100">images→pdf</text>
+
+  <!-- Row 2 -->
+  <rect x="240" y="215" width="145" height="85" rx="6" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1"/>
+  <text x="312" y="233" text-anchor="middle" font-size="10" font-weight="bold" fill="#4a148c">Manipulate (10)</text>
+  <text x="250" y="248" font-size="8" fill="#6a1b9a">merge · split · rotate</text>
+  <text x="250" y="260" font-size="8" fill="#6a1b9a">compress · crop · reorder</text>
+  <text x="250" y="272" font-size="8" fill="#6a1b9a">delete · watermark</text>
+  <text x="250" y="284" font-size="8" fill="#6a1b9a">headers · split_bookmarks</text>
+
+  <rect x="395" y="215" width="145" height="85" rx="6" fill="#ffebee" stroke="#d32f2f" stroke-width="1"/>
+  <text x="467" y="233" text-anchor="middle" font-size="10" font-weight="bold" fill="#b71c1c">Security (9)</text>
+  <text x="405" y="248" font-size="8" fill="#c62828">encrypt · decrypt · hash</text>
+  <text x="405" y="260" font-size="8" fill="#c62828">redact · scan_sensitive</text>
+  <text x="405" y="272" font-size="8" fill="#c62828">sanitize · remove_metadata</text>
+  <text x="405" y="284" font-size="8" fill="#c62828">detect_active · permissions</text>
+
+  <rect x="550" y="215" width="145" height="85" rx="6" fill="#e0f2f1" stroke="#00695c" stroke-width="1"/>
+  <text x="622" y="233" text-anchor="middle" font-size="10" font-weight="bold" fill="#004d40">Forms (5)</text>
+  <text x="560" y="248" font-size="8" fill="#00695c">detect_fields · fill_form</text>
+  <text x="560" y="260" font-size="8" fill="#00695c">flatten · fill_flat_form</text>
+  <text x="560" y="272" font-size="8" fill="#00695c">describe_form_layout</text>
+
+  <rect x="705" y="215" width="145" height="85" rx="6" fill="#ede7f6" stroke="#4527a0" stroke-width="1"/>
+  <text x="777" y="233" text-anchor="middle" font-size="10" font-weight="bold" fill="#311b92">Numbering (2)</text>
+  <text x="715" y="248" font-size="8" fill="#4527a0">page_numbers</text>
+  <text x="715" y="260" font-size="8" fill="#4527a0">bates_numbers</text>
+
+  <!-- Dependencies -->
+  <rect x="240" y="320" width="610" height="70" rx="6" fill="#fafafa" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="260" y="340" font-size="10" font-weight="bold" fill="#424242">Pure Rust Dependencies (zero system deps)</text>
+  <text x="260" y="358" font-size="9" fill="#616161">lopdf 0.40 — PDF read/write/manipulate</text>
+  <text x="260" y="372" font-size="9" fill="#616161">printpdf 0.7 — PDF generation (graphics, text, images)</text>
+  <text x="260" y="386" font-size="9" fill="#616161">pdf_oxide 0.3 — High-fidelity extraction (100% pass rate)</text>
+  <text x="540" y="358" font-size="9" fill="#616161">comrak 0.52 — Markdown parser (CommonMark)</text>
+  <text x="540" y="372" font-size="9" fill="#616161">qrcode 0.14 — QR code generation</text>
+  <text x="540" y="386" font-size="9" fill="#616161">aes + cbc + md5 — PDF encryption (AES-128 R4)</text>
+
+  <!-- Output -->
+  <rect x="240" y="405" width="610" height="90" rx="6" fill="#f1f8e9" stroke="#689f38" stroke-width="1"/>
+  <text x="260" y="425" font-size="10" font-weight="bold" fill="#33691e">Output Capabilities</text>
+  <text x="260" y="443" font-size="9" fill="#558b2f">📄 Professional PDFs — invoices, receipts, contracts, certificates, reports</text>
+  <text x="260" y="457" font-size="9" fill="#558b2f">🔒 Encrypted + redacted PDFs — AES-128, true content removal</text>
+  <text x="260" y="471" font-size="9" fill="#558b2f">📝 Filled forms — interactive (AcroForm) + flat (coordinate-based)</text>
+  <text x="260" y="485" font-size="9" fill="#558b2f">🔄 Converted formats — Markdown, HTML, JSON, CSV, images→PDF</text>
+
+  <!-- Arrow marker -->
+  <defs><marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#4285f4"/></marker></defs>
+</svg>
