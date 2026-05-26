@@ -274,3 +274,70 @@ pub struct FlatFormEntry {
     pub text: String,
     pub font_size: Option<f32>,
 }
+
+/// Describe form layout: extract text labels with their positions (mm from top-left)
+/// This helps the agent understand where to place fill text
+pub fn describe_form_layout(pdf_path: &str, page_number: u32) -> String {
+    match lopdf::Document::load(pdf_path) {
+        Ok(doc) => {
+            let pages = doc.get_pages();
+            if pages.get(&page_number).is_none() {
+                return serde_json::json!({"error": format!("Page {} not found", page_number)}).to_string();
+            }
+
+            // Get page dimensions
+            let page_id = pages[&page_number];
+            let (page_w, page_h) = if let Ok(page) = doc.get_dictionary(page_id) {
+                if let Ok(mbox) = page.get(b"MediaBox").and_then(|m| m.as_array()) {
+                    let w = mbox.get(2).and_then(|v| v.as_float().ok()).unwrap_or(595.0);
+                    let h = mbox.get(3).and_then(|v| v.as_float().ok()).unwrap_or(842.0);
+                    (w, h)
+                } else { (595.0, 842.0) }
+            } else { (595.0, 842.0) };
+
+            let page_h_mm = page_h as f32 * 0.353;
+            let page_w_mm = page_w as f32 * 0.353;
+
+            // Extract text - we'll parse the content stream for text positions
+            // Use pdf_extract for the text content, then provide page dimensions
+            let text = pdf_extract::extract_text(pdf_path).unwrap_or_default();
+
+            // Also look for lines/rectangles that indicate form fields
+            // (horizontal lines often mark where to write)
+            let mut lines_info = Vec::<serde_json::Value>::new();
+            if let Ok(content_data) = doc.get_page_content(page_id) {
+                let content_str = String::from_utf8_lossy(&content_data);
+                // Find horizontal line operations (x1 y1 m x2 y2 l patterns)
+                let re = regex::Regex::new(r"([\d.]+)\s+([\d.]+)\s+m\s+([\d.]+)\s+([\d.]+)\s+l").unwrap();
+                for cap in re.captures_iter(&content_str) {
+                    let x1: f32 = cap[1].parse().unwrap_or(0.0);
+                    let y1: f32 = cap[2].parse().unwrap_or(0.0);
+                    let x2: f32 = cap[3].parse().unwrap_or(0.0);
+                    let y2: f32 = cap[4].parse().unwrap_or(0.0);
+                    // Only horizontal lines (likely form field underlines)
+                    if (y1 - y2).abs() < 2.0 && (x2 - x1).abs() > 20.0 {
+                        let x_mm = x1 * 0.353;
+                        let y_mm = page_h_mm - (y1 * 0.353); // flip to top-left origin
+                        let width_mm = (x2 - x1) * 0.353;
+                        lines_info.push(serde_json::json!({
+                            "x_mm": (x_mm * 10.0).round() / 10.0,
+                            "y_mm": (y_mm * 10.0).round() / 10.0,
+                            "width_mm": (width_mm * 10.0).round() / 10.0,
+                            "hint": "form field underline - place text 2mm above this line"
+                        }));
+                    }
+                }
+            }
+
+            serde_json::json!({
+                "page": page_number,
+                "page_width_mm": (page_w_mm * 10.0).round() / 10.0,
+                "page_height_mm": (page_h_mm * 10.0).round() / 10.0,
+                "text_content": text.lines().take(50).collect::<Vec<&str>>(),
+                "field_lines": lines_info,
+                "instructions": "Use fill_flat_form with x (mm from left) and y (mm from top). Place text 2mm above detected field lines."
+            }).to_string()
+        }
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}

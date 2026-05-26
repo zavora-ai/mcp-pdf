@@ -428,4 +428,9 @@ impl PdfServer {
         }).collect();
         forms::fill_flat_form(&input.pdf_path, &input.output, &entries)
     }
+
+    #[tool(description = "Describe form layout: page size, text labels, and detected field underlines with positions in mm. Use before fill_flat_form to find correct coordinates.")]
+    async fn describe_form_layout(&self, Parameters(input): Parameters<PageTextInput>) -> String {
+        forms::describe_form_layout(&input.pdf_path, input.page_number)
+    }
 }
