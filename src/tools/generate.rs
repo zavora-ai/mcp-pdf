@@ -9,6 +9,7 @@ pub struct InvoiceData {
     pub logo: Option<String>,
     pub style: String,
     pub qr_data: Option<String>,
+    pub qr_size: String,
 }
 
 pub fn create_invoice(data: InvoiceData) -> String {
@@ -131,10 +132,21 @@ pub fn create_invoice(data: InvoiceData) -> String {
                 interpolate: false, image_data: rgb,
                 image_filter: None, clipping_bbox: None, smask: None,
             });
-            // Scale 0.5 → ~25mm (invoice), user can pass larger qr_data for bigger codes
+            // Scale based on qr_size: tiny=25mm, small=100mm, medium=250mm, large=500mm
+            // Base image at 6px/module is ~150px = ~53mm at 1:1
+            // To get target mm: scale = target_mm / 53
+            let target_mm = match data.qr_size.as_str() {
+                "tiny" => 25.0f32,
+                "small" => 100.0f32,
+                "large" => 500.0f32,
+                _ => 250.0f32, // medium (default)
+            };
+            let base_mm = img_size as f32 * 0.353; // pixels to mm at 72dpi (1pt=0.353mm)
+            let qr_scale = target_mm / base_mm;
+
             image.add_to_layer(layer.clone(), ImageTransform {
                 translate_x: Some(Mm(168.0)), translate_y: Some(Mm(28.0)),
-                scale_x: Some(0.5), scale_y: Some(0.5),
+                scale_x: Some(qr_scale), scale_y: Some(qr_scale),
                 ..Default::default()
             });
         }

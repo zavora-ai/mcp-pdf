@@ -58,6 +58,8 @@ pub struct InvoiceInput {
     pub style: Option<String>,
     /// Data to encode as QR code (e.g., payment URL, invoice reference)
     pub qr_data: Option<String>,
+    /// QR size: "tiny" (25mm), "small" (100mm), "medium" (250mm, default), "large" (500mm)
+    pub qr_size: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -300,6 +302,7 @@ impl PdfServer {
             logo: input.logo,
             style: input.style.unwrap_or("minimal".into()),
             qr_data: input.qr_data,
+            qr_size: input.qr_size.unwrap_or("medium".into()),
         };
         generate::create_invoice(data)
     }
