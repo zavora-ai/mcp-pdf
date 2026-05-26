@@ -127,7 +127,13 @@ pub struct EncryptInput { pub pdf_path: String, pub output: String, pub owner_pa
 pub struct ScanSensitiveInput { pub pdf_path: String, pub categories: Option<Vec<String>> }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct RedactInput { pub pdf_path: String, pub output: String, pub terms: Vec<String> }
+pub struct RedactInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub terms: Vec<String>,
+    /// "black" (default, █ blocks) or "space" (whitespace)
+    pub mode: Option<String>,
+}
 
 // --- Tool Router ---
 
@@ -352,6 +358,6 @@ impl PdfServer {
 
     #[tool(description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)")]
     async fn redact_pdf(&self, Parameters(input): Parameters<RedactInput>) -> String {
-        security::redact_pdf(&input.pdf_path, &input.output, &input.terms)
+        security::redact_pdf(&input.pdf_path, &input.output, &input.terms, input.mode.as_deref())
     }
 }

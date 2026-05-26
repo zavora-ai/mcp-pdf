@@ -196,16 +196,20 @@ pub fn scan_sensitive_data(pdf_path: &str, categories: Option<&[String]>) -> Str
     serde_json::json!({"findings": findings, "total_categories": findings.len(), "risk_level": risk}).to_string()
 }
 
-pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String]) -> String {
+pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String], mode: Option<&str>) -> String {
     match lopdf::Document::load(pdf_path) {
         Ok(mut doc) => {
             let mut redacted_count = 0u32;
             let page_nums: Vec<u32> = doc.get_pages().keys().copied().collect();
+            let use_black = mode.unwrap_or("black") != "space";
 
             for page_num in page_nums {
                 for term in terms {
-                    // Replace with spaces of same length (true redaction from content stream)
-                    let replacement = " ".repeat(term.len());
+                    let replacement = if use_black {
+                        "X".repeat(term.len())
+                    } else {
+                        " ".repeat(term.len())
+                    };
                     match doc.replace_partial_text(page_num, term, &replacement, None) {
                         Ok(count) => redacted_count += count as u32,
                         Err(_) => {}
