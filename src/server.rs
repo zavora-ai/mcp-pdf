@@ -1,7 +1,7 @@
 use rmcp::{tool, tool_router, schemars};
 use rmcp::handler::server::wrapper::Parameters;
 use serde::Deserialize;
-use crate::tools::{inspect, extract, manipulate, numbering, generate, security};
+use crate::tools::{inspect, extract, manipulate, numbering, generate, security, forms};
 
 #[derive(Clone)]
 pub struct PdfServer;
@@ -133,6 +133,13 @@ pub struct RedactInput {
     pub terms: Vec<String>,
     /// "black" (default, █ blocks) or "space" (whitespace)
     pub mode: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct FillFormInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub field_values: serde_json::Value,
 }
 
 // --- Tool Router ---
@@ -359,5 +366,21 @@ impl PdfServer {
     #[tool(description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)")]
     async fn redact_pdf(&self, Parameters(input): Parameters<RedactInput>) -> String {
         security::redact_pdf(&input.pdf_path, &input.output, &input.terms, input.mode.as_deref())
+    }
+
+    // === PILLAR 10: Forms ===
+    #[tool(description = "Detect form fields in a PDF: names, types, current values")]
+    async fn detect_form_fields(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
+        forms::detect_form_fields(&input.pdf_path)
+    }
+
+    #[tool(description = "Fill form fields by name-value map")]
+    async fn fill_form(&self, Parameters(input): Parameters<FillFormInput>) -> String {
+        forms::fill_form(&input.pdf_path, &input.output, &input.field_values)
+    }
+
+    #[tool(description = "Flatten form (make fields non-editable, burn values into page)")]
+    async fn flatten_form(&self, Parameters(input): Parameters<OutputInput>) -> String {
+        forms::flatten_form(&input.pdf_path, &input.output)
     }
 }
