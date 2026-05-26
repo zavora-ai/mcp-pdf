@@ -162,7 +162,8 @@ pub struct ReceiptData {
     pub payment_method: String,
     pub _logo: Option<String>,
     pub stamp: Option<String>,
-    pub stamp_style: String, // "circle" or "rectangle"
+    pub stamp_style: String,
+    pub stamp_color: Option<String>,
 }
 
 pub fn create_receipt(data: ReceiptData) -> String {
@@ -221,7 +222,9 @@ pub fn create_receipt(data: ReceiptData) -> String {
             _ => stamp.as_str(),
         };
         let is_void = stamp_text == "VOID" || stamp_text == "REJECTED";
-        let color = if is_void {
+        let color = if let Some(ref hex) = data.stamp_color {
+            parse_hex_color(hex)
+        } else if is_void {
             Rgb::new(0.7, 0.0, 0.0, None)
         } else {
             Rgb::new(0.05, 0.10, 0.35, None)
@@ -864,4 +867,13 @@ fn draw_text_on_arc(layer: &printpdf::PdfLayerReference, font: &printpdf::Indire
         layer.write_text(&ch.to_string(), font);
         layer.end_text_section();
     }
+}
+
+/// Parse "#RRGGBB" hex color to Rgb
+fn parse_hex_color(hex: &str) -> printpdf::Rgb {
+    let hex = hex.trim_start_matches('#');
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0) as f32 / 255.0;
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0) as f32 / 255.0;
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0) as f32 / 255.0;
+    printpdf::Rgb::new(r, g, b, None)
 }

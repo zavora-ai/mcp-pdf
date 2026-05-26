@@ -76,6 +76,8 @@ pub struct ReceiptInput {
     pub stamp: Option<String>,
     /// Stamp style: "circle" (default) or "rectangle"
     pub stamp_style: Option<String>,
+    /// Stamp color as hex "#RRGGBB" (default: navy blue, red for void)
+    pub stamp_color: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -312,6 +314,7 @@ impl PdfServer {
             _logo: input.logo,
             stamp: input.stamp,
             stamp_style: input.stamp_style.unwrap_or("circle".into()),
+            stamp_color: input.stamp_color,
         };
         generate::create_receipt(data)
     }
