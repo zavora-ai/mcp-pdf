@@ -186,6 +186,57 @@ pub struct ImagesToPdfInput {
     pub output: String,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct HeaderFooterInput {
+    pub pdf_path: String,
+    pub output: String,
+    /// Use {page} and {total} as placeholders
+    pub header: Option<String>,
+    pub footer: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct SplitByBookmarksInput {
+    pub pdf_path: String,
+    pub output_dir: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct QuoteInput {
+    pub output: String,
+    pub company: String,
+    pub customer: String,
+    pub items: Vec<InvoiceItem>,
+    pub valid_until: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct StatementInput {
+    pub output: String,
+    pub company: String,
+    pub account_holder: String,
+    pub period: String,
+    pub transactions: Vec<TransactionEntry>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct TransactionEntry {
+    pub date: String,
+    pub description: String,
+    pub amount_cents: i64,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct PurchaseOrderInput {
+    pub output: String,
+    pub buyer: String,
+    pub vendor: String,
+    pub po_number: Option<String>,
+    pub items: Vec<InvoiceItem>,
+    pub terms: Option<String>,
+}
+
 // --- Tool Router ---
 
 #[tool_router(server_handler)]
@@ -476,5 +527,34 @@ impl PdfServer {
     #[tool(description = "Convert images to PDF (one image per page, auto-scaled to fit)")]
     async fn images_to_pdf(&self, Parameters(input): Parameters<ImagesToPdfInput>) -> String {
         convert::images_to_pdf(&input.image_paths, &input.output)
+    }
+
+    // === Additional tools ===
+    #[tool(description = "Add headers and footers to all pages. Use {page} and {total} as placeholders.")]
+    async fn add_headers_footers(&self, Parameters(input): Parameters<HeaderFooterInput>) -> String {
+        numbering::add_headers_footers(&input.pdf_path, &input.output, input.header.as_deref(), input.footer.as_deref())
+    }
+
+    #[tool(description = "Split PDF into separate files by bookmark sections")]
+    async fn split_by_bookmarks(&self, Parameters(input): Parameters<SplitByBookmarksInput>) -> String {
+        numbering::split_by_bookmarks(&input.pdf_path, &input.output_dir)
+    }
+
+    #[tool(description = "Generate price quote/estimate PDF")]
+    async fn create_quote(&self, Parameters(input): Parameters<QuoteInput>) -> String {
+        let items: Vec<(String, u32, i64)> = input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect();
+        generate::create_quote(&input.output, &input.company, &input.customer, &items, input.valid_until.as_deref(), input.notes.as_deref())
+    }
+
+    #[tool(description = "Generate account/financial statement PDF")]
+    async fn create_statement(&self, Parameters(input): Parameters<StatementInput>) -> String {
+        let txns: Vec<(String, String, i64)> = input.transactions.into_iter().map(|t| (t.date, t.description, t.amount_cents)).collect();
+        generate::create_statement(&input.output, &input.company, &input.account_holder, &input.period, &txns)
+    }
+
+    #[tool(description = "Generate purchase order PDF")]
+    async fn create_purchase_order(&self, Parameters(input): Parameters<PurchaseOrderInput>) -> String {
+        let items: Vec<(String, u32, i64)> = input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect();
+        generate::create_purchase_order(&input.output, &input.buyer, &input.vendor, &input.po_number.unwrap_or("PO-001".into()), &items, input.terms.as_deref())
     }
 }

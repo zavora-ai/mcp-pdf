@@ -719,6 +719,158 @@ fn render_cert_minimal(layer: &PdfLayerReference, font: &IndirectFontRef, bold: 
     layer.use_text(date, 9.0, Mm(center_x(date, 9.0)), Mm(40.0), font);
 }
 
+pub fn create_quote(output: &str, company: &str, customer: &str, items: &[(String, u32, i64)], valid_until: Option<&str>, notes: Option<&str>) -> String {
+    let (doc, page1, layer1) = PdfDocument::new("Quote", Mm(210.0), Mm(297.0), "Layer 1");
+    let font = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
+    let bold = doc.add_builtin_font(BuiltinFont::HelveticaBold).unwrap();
+    let layer = doc.get_page(page1).get_layer(layer1);
+
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.4, 0.4, 0.4, None)));
+    layer.use_text("QUOTE", 24.0, Mm(155.0), Mm(278.0), &bold);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    layer.use_text(company, 12.0, Mm(15.0), Mm(278.0), &bold);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+    layer.use_text(&chrono::Utc::now().format("%B %d, %Y").to_string(), 10.0, Mm(155.0), Mm(270.0), &font);
+    if let Some(v) = valid_until {
+        layer.use_text(&format!("Valid until: {}", v), 10.0, Mm(155.0), Mm(264.0), &font);
+    }
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.6, 0.6, 0.6, None)));
+    layer.use_text("Prepared for", 8.0, Mm(15.0), Mm(255.0), &font);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    layer.use_text(customer, 11.0, Mm(15.0), Mm(249.0), &bold);
+
+    let mut y = 225.0f32;
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+    layer.use_text("Description", 8.0, Mm(15.0), Mm(y), &bold);
+    layer.use_text("Qty", 8.0, Mm(120.0), Mm(y), &bold);
+    layer.use_text("Price", 8.0, Mm(140.0), Mm(y), &bold);
+    layer.use_text("Amount", 8.0, Mm(175.0), Mm(y), &bold);
+    y -= 7.0;
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    let mut total: i64 = 0;
+    for (desc, qty, price) in items {
+        let amt = *qty as i64 * price;
+        total += amt;
+        layer.use_text(desc, 10.0, Mm(15.0), Mm(y), &font);
+        layer.use_text(&qty.to_string(), 10.0, Mm(123.0), Mm(y), &font);
+        layer.use_text(&format!("${:.2}", *price as f64 / 100.0), 10.0, Mm(140.0), Mm(y), &font);
+        layer.use_text(&format!("${:.2}", amt as f64 / 100.0), 10.0, Mm(175.0), Mm(y), &font);
+        y -= 7.0;
+    }
+    y -= 5.0;
+    layer.use_text("Total", 10.0, Mm(140.0), Mm(y), &bold);
+    layer.use_text(&format!("${:.2}", total as f64 / 100.0), 12.0, Mm(172.0), Mm(y), &bold);
+
+    if let Some(n) = notes {
+        y -= 15.0;
+        layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+        layer.use_text("Notes:", 8.0, Mm(15.0), Mm(y), &bold);
+        y -= 5.0;
+        layer.use_text(n, 9.0, Mm(15.0), Mm(y), &font);
+    }
+
+    match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(output).unwrap())) {
+        Ok(_) => serde_json::json!({"output": output, "total": format!("${:.2}", total as f64 / 100.0)}).to_string(),
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
+pub fn create_statement(output: &str, company: &str, account_holder: &str, period: &str, transactions: &[(String, String, i64)]) -> String {
+    let (doc, page1, layer1) = PdfDocument::new("Statement", Mm(210.0), Mm(297.0), "Layer 1");
+    let font = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
+    let bold = doc.add_builtin_font(BuiltinFont::HelveticaBold).unwrap();
+    let layer = doc.get_page(page1).get_layer(layer1);
+
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    layer.use_text(company, 14.0, Mm(15.0), Mm(278.0), &bold);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.4, 0.4, 0.4, None)));
+    layer.use_text("STATEMENT", 20.0, Mm(145.0), Mm(278.0), &bold);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+    layer.use_text(&format!("Period: {}", period), 10.0, Mm(145.0), Mm(270.0), &font);
+    layer.use_text(&format!("Account: {}", account_holder), 10.0, Mm(15.0), Mm(260.0), &font);
+
+    let mut y = 235.0f32;
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+    layer.use_text("Date", 8.0, Mm(15.0), Mm(y), &bold);
+    layer.use_text("Description", 8.0, Mm(45.0), Mm(y), &bold);
+    layer.use_text("Amount", 8.0, Mm(170.0), Mm(y), &bold);
+    y -= 7.0;
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    let mut balance: i64 = 0;
+    for (date, desc, amount) in transactions {
+        balance += amount;
+        layer.use_text(date, 9.0, Mm(15.0), Mm(y), &font);
+        layer.use_text(desc, 9.0, Mm(45.0), Mm(y), &font);
+        let sign = if *amount >= 0 { "" } else { "-" };
+        layer.use_text(&format!("{}${:.2}", sign, amount.unsigned_abs() as f64 / 100.0), 9.0, Mm(170.0), Mm(y), &font);
+        y -= 6.0;
+    }
+    y -= 5.0;
+    layer.use_text("Balance", 10.0, Mm(140.0), Mm(y), &bold);
+    let sign = if balance >= 0 { "" } else { "-" };
+    layer.use_text(&format!("{}${:.2}", sign, balance.unsigned_abs() as f64 / 100.0), 12.0, Mm(168.0), Mm(y), &bold);
+
+    match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(output).unwrap())) {
+        Ok(_) => serde_json::json!({"output": output, "balance": format!("{}${:.2}", sign, balance.unsigned_abs() as f64 / 100.0), "transactions": transactions.len()}).to_string(),
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
+pub fn create_purchase_order(output: &str, buyer: &str, vendor: &str, po_number: &str, items: &[(String, u32, i64)], terms: Option<&str>) -> String {
+    let (doc, page1, layer1) = PdfDocument::new("Purchase Order", Mm(210.0), Mm(297.0), "Layer 1");
+    let font = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
+    let bold = doc.add_builtin_font(BuiltinFont::HelveticaBold).unwrap();
+    let layer = doc.get_page(page1).get_layer(layer1);
+
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.15, 0.15, 0.35, None)));
+    layer.use_text("PURCHASE ORDER", 20.0, Mm(15.0), Mm(278.0), &bold);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+    layer.use_text(&format!("PO #: {}", po_number), 10.0, Mm(155.0), Mm(278.0), &font);
+    layer.use_text(&chrono::Utc::now().format("%B %d, %Y").to_string(), 10.0, Mm(155.0), Mm(272.0), &font);
+
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.6, 0.6, 0.6, None)));
+    layer.use_text("From (Buyer)", 8.0, Mm(15.0), Mm(258.0), &font);
+    layer.use_text("To (Vendor)", 8.0, Mm(110.0), Mm(258.0), &font);
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    layer.use_text(buyer, 11.0, Mm(15.0), Mm(252.0), &bold);
+    layer.use_text(vendor, 11.0, Mm(110.0), Mm(252.0), &bold);
+
+    let mut y = 225.0f32;
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+    layer.use_text("Item", 8.0, Mm(15.0), Mm(y), &bold);
+    layer.use_text("Qty", 8.0, Mm(120.0), Mm(y), &bold);
+    layer.use_text("Unit Price", 8.0, Mm(140.0), Mm(y), &bold);
+    layer.use_text("Total", 8.0, Mm(175.0), Mm(y), &bold);
+    y -= 7.0;
+    layer.set_fill_color(Color::Rgb(Rgb::new(0.2, 0.2, 0.2, None)));
+    let mut total: i64 = 0;
+    for (desc, qty, price) in items {
+        let amt = *qty as i64 * price;
+        total += amt;
+        layer.use_text(desc, 10.0, Mm(15.0), Mm(y), &font);
+        layer.use_text(&qty.to_string(), 10.0, Mm(123.0), Mm(y), &font);
+        layer.use_text(&format!("${:.2}", *price as f64 / 100.0), 10.0, Mm(140.0), Mm(y), &font);
+        layer.use_text(&format!("${:.2}", amt as f64 / 100.0), 10.0, Mm(175.0), Mm(y), &font);
+        y -= 7.0;
+    }
+    y -= 5.0;
+    layer.use_text("TOTAL", 10.0, Mm(140.0), Mm(y), &bold);
+    layer.use_text(&format!("${:.2}", total as f64 / 100.0), 12.0, Mm(170.0), Mm(y), &bold);
+
+    if let Some(t) = terms {
+        y -= 15.0;
+        layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
+        layer.use_text("Terms:", 8.0, Mm(15.0), Mm(y), &bold);
+        y -= 5.0;
+        layer.use_text(t, 9.0, Mm(15.0), Mm(y), &font);
+    }
+
+    match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(output).unwrap())) {
+        Ok(_) => serde_json::json!({"output": output, "total": format!("${:.2}", total as f64 / 100.0), "po_number": po_number}).to_string(),
+        Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
+    }
+}
+
 /// Approximate center X for text on landscape A4 (297mm wide)
 fn center_x(text: &str, font_size: f32) -> f32 {
     // Helvetica avg char width ≈ 0.5 * font_size in points; 1pt = 0.353mm
