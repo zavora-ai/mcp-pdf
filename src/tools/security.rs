@@ -200,33 +200,31 @@ pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String]) -> String {
     match lopdf::Document::load(pdf_path) {
         Ok(mut doc) => {
             let mut redacted_count = 0u32;
-            let page_ids: Vec<lopdf::ObjectId> = doc.get_pages().values().copied().collect();
-            for page_id in page_ids {
-                let content_ids = doc.get_page_contents(page_id);
-                for content_id in content_ids {
-                    if let Ok(content_obj) = doc.get_object_mut(content_id) {
-                        if let Ok(stream) = content_obj.as_stream_mut() {
-                            if let Ok(data) = stream.decompressed_content() {
-                                let mut text = String::from_utf8_lossy(&data).to_string();
-                                let mut modified = false;
-                                for term in terms {
-                                    if text.contains(term) {
-                                        text = text.replace(term, &"█".repeat(term.len()));
-                                        redacted_count += 1;
-                                        modified = true;
-                                    }
-                                }
-                                if modified { stream.set_plain_content(text.into_bytes()); }
-                            }
-                        }
+            let page_nums: Vec<u32> = doc.get_pages().keys().copied().collect();
+
+            for page_num in page_nums {
+                for term in terms {
+                    // Replace with spaces of same length (true redaction from content stream)
+                    let replacement = " ".repeat(term.len());
+                    match doc.replace_partial_text(page_num, term, &replacement, None) {
+                        Ok(count) => redacted_count += count as u32,
+                        Err(_) => {}
                     }
                 }
             }
+
+            // Strip metadata
             doc.trailer.remove(b"Info");
+
             match doc.save(output) {
                 Ok(_) => {
                     let hash = Sha256::digest(&std::fs::read(output).unwrap_or_default());
-                    serde_json::json!({"output": output, "redactions_applied": redacted_count, "metadata_stripped": true, "sha256": format!("{:x}", hash)}).to_string()
+                    serde_json::json!({
+                        "output": output,
+                        "redactions_applied": redacted_count,
+                        "metadata_stripped": true,
+                        "sha256": format!("{:x}", hash),
+                    }).to_string()
                 }
                 Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
             }
