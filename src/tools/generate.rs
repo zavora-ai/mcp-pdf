@@ -109,9 +109,8 @@ pub fn create_invoice(data: InvoiceData) -> String {
         if let Ok(qr) = qrcode::QrCode::new(qr_data.as_bytes()) {
             let modules = qr.to_colors();
             let size = qr.width() as u32;
-            let scale = 3u32;
+            let scale = 6u32; // 6px per module → ~150px image → ~53mm at 72dpi
             let img_size = size * scale;
-            // Build RGB image from QR modules
             let mut rgb = vec![255u8; (img_size * img_size * 3) as usize];
             for y in 0..size {
                 for x in 0..size {
@@ -132,9 +131,10 @@ pub fn create_invoice(data: InvoiceData) -> String {
                 interpolate: false, image_data: rgb,
                 image_filter: None, clipping_bbox: None, smask: None,
             });
+            // Scale 0.5 → ~25mm (invoice), user can pass larger qr_data for bigger codes
             image.add_to_layer(layer.clone(), ImageTransform {
-                translate_x: Some(Mm(170.0)), translate_y: Some(Mm(30.0)),
-                scale_x: Some(0.35), scale_y: Some(0.35),
+                translate_x: Some(Mm(168.0)), translate_y: Some(Mm(28.0)),
+                scale_x: Some(0.5), scale_y: Some(0.5),
                 ..Default::default()
             });
         }
