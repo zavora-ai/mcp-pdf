@@ -154,6 +154,25 @@ pub struct FillFormInput {
     pub field_values: serde_json::Value,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct FlatFormInput {
+    pub pdf_path: String,
+    pub output: String,
+    /// Array of entries: [{page, x (mm), y (mm), text, font_size (optional)}]
+    pub entries: Vec<FlatFormEntry>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct FlatFormEntry {
+    pub page: u32,
+    /// X position in mm from left edge
+    pub x: f32,
+    /// Y position in mm from bottom edge
+    pub y: f32,
+    pub text: String,
+    pub font_size: Option<f32>,
+}
+
 // --- Tool Router ---
 
 #[tool_router(server_handler)]
@@ -400,5 +419,13 @@ impl PdfServer {
     #[tool(description = "Flatten form (make fields non-editable, burn values into page)")]
     async fn flatten_form(&self, Parameters(input): Parameters<OutputInput>) -> String {
         forms::flatten_form(&input.pdf_path, &input.output)
+    }
+
+    #[tool(description = "Fill a flat/scanned form by overlaying text at x,y positions (mm). For non-interactive PDFs.")]
+    async fn fill_flat_form(&self, Parameters(input): Parameters<FlatFormInput>) -> String {
+        let entries: Vec<forms::FlatFormEntry> = input.entries.into_iter().map(|e| forms::FlatFormEntry {
+            page: e.page, x: e.x, y: e.y, text: e.text, font_size: e.font_size,
+        }).collect();
+        forms::fill_flat_form(&input.pdf_path, &input.output, &entries)
     }
 }
