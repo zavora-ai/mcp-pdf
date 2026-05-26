@@ -74,6 +74,8 @@ pub struct ReceiptInput {
     pub logo: Option<String>,
     /// Stamp text: "received", "paid", "void", or custom
     pub stamp: Option<String>,
+    /// Stamp style: "circle" (default) or "rectangle"
+    pub stamp_style: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -309,6 +311,7 @@ impl PdfServer {
             payment_method: input.payment_method.unwrap_or("Card".into()),
             _logo: input.logo,
             stamp: input.stamp,
+            stamp_style: input.stamp_style.unwrap_or("circle".into()),
         };
         generate::create_receipt(data)
     }

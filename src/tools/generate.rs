@@ -161,7 +161,8 @@ pub struct ReceiptData {
     pub items: Vec<(String, u32, i64)>,
     pub payment_method: String,
     pub _logo: Option<String>,
-    pub stamp: Option<String>, // "received", "paid", "void", or custom text
+    pub stamp: Option<String>,
+    pub stamp_style: String, // "circle" or "rectangle"
 }
 
 pub fn create_receipt(data: ReceiptData) -> String {
@@ -209,7 +210,7 @@ pub fn create_receipt(data: ReceiptData) -> String {
     layer.set_fill_color(Color::Rgb(Rgb::new(0.5, 0.5, 0.5, None)));
     layer.use_text(&format!("Payment method: {}", data.payment_method), 9.0, Mm(15.0), Mm(y), &font);
 
-    // Stamp (circular rubber stamp with curved text)
+    // Stamp
     if let Some(ref stamp) = data.stamp {
         let stamp_text = match stamp.to_lowercase().as_str() {
             "received" => "RECEIVED",
@@ -226,48 +227,74 @@ pub fn create_receipt(data: ReceiptData) -> String {
             Rgb::new(0.05, 0.10, 0.35, None)
         };
 
-        let cx = 152.5f32;
-        let cy = 115.0f32;
-        let r_outer = 24.0f32;
-        let r_inner = 18.0f32;
+        if data.stamp_style == "rectangle" {
+            // Rectangle stamp: double border, bold text, date
+            use printpdf::path::PaintMode;
+            let cx = 152.5f32;
+            let cy = 115.0f32;
+            let hw = 28.0f32; // half width
+            let hh = 12.0f32; // half height
 
-        // Draw two circles
-        layer.set_outline_color(Color::Rgb(color.clone()));
-        layer.set_outline_thickness(2.0);
-        draw_circle(&layer, cx, cy, r_outer);
-        layer.set_outline_thickness(1.5);
-        draw_circle(&layer, cx, cy, r_inner);
+            layer.set_outline_color(Color::Rgb(color.clone()));
+            layer.set_outline_thickness(2.5);
+            layer.add_rect(Rect::new(Mm(cx - hw), Mm(cy - hh), Mm(cx + hw), Mm(cy + hh)).with_mode(PaintMode::Stroke));
+            layer.set_outline_thickness(1.2);
+            layer.add_rect(Rect::new(Mm(cx - hw + 2.0), Mm(cy - hh + 2.0), Mm(cx + hw - 2.0), Mm(cy + hh - 2.0)).with_mode(PaintMode::Stroke));
 
-        // Curved text between circles
-        layer.set_fill_color(Color::Rgb(color.clone()));
-        let arc_radius = (r_outer + r_inner) / 2.0;
-        let top_text = data.company.to_uppercase();
-        draw_text_on_arc(&layer, &bold, &top_text, cx, cy, arc_radius, 6.5, true);
-        draw_text_on_arc(&layer, &bold, "BY: AUTHORIZED", cx, cy, arc_radius, 6.0, false);
+            // Company name top
+            layer.set_fill_color(Color::Rgb(color.clone()));
+            let comp = data.company.to_uppercase();
+            let comp_w = comp.len() as f32 * 5.0 * 0.6 * 0.353;
+            layer.use_text(&comp, 5.0, Mm(cx - comp_w / 2.0), Mm(cy + 6.0), &bold);
 
-        // Inner content: centered within r_inner
-        // Horizontal line above text
-        layer.set_outline_thickness(0.8);
-        layer.add_line(Line { points: vec![
-            (Point::new(Mm(cx - 15.0), Mm(cy + 5.0)), false),
-            (Point::new(Mm(cx + 15.0), Mm(cy + 5.0)), false),
-        ], is_closed: false });
+            // Main text centered
+            let font_size = 16.0f32;
+            let text_w = stamp_text.len() as f32 * font_size * 0.6 * 0.353;
+            layer.use_text(stamp_text, font_size, Mm(cx - text_w / 2.0), Mm(cy - 1.0), &bold);
 
-        // RECEIVED - centered (font 14pt, approx 3.5mm per char for Helvetica Bold)
-        let char_w = 14.0 * 0.35 * 0.353; // ~1.73mm per char at 14pt
-        let text_w = stamp_text.len() as f32 * char_w;
-        layer.use_text(stamp_text, 14.0, Mm(cx - text_w / 2.0), Mm(cy), &bold);
+            // Date bottom
+            let date_str = chrono::Utc::now().format("DATE: %d/%m/%Y").to_string();
+            let date_w = date_str.len() as f32 * 5.0 * 0.6 * 0.353;
+            layer.use_text(&date_str, 5.0, Mm(cx - date_w / 2.0), Mm(cy - 7.5), &font);
+        } else {
+            // Circle stamp (default)
+            let cx = 152.5f32;
+            let cy = 115.0f32;
+            let r_outer = 24.0f32;
+            let r_inner = 18.0f32;
 
-        // Horizontal line below text
-        layer.add_line(Line { points: vec![
-            (Point::new(Mm(cx - 15.0), Mm(cy - 2.5)), false),
-            (Point::new(Mm(cx + 15.0), Mm(cy - 2.5)), false),
-        ], is_closed: false });
+            layer.set_outline_color(Color::Rgb(color.clone()));
+            layer.set_outline_thickness(2.0);
+            draw_circle(&layer, cx, cy, r_outer);
+            layer.set_outline_thickness(1.5);
+            draw_circle(&layer, cx, cy, r_inner);
 
-        // DATE centered below
-        let date_str = chrono::Utc::now().format("DATE: %d/%m/%Y").to_string();
-        let date_w = date_str.len() as f32 * 5.0 * 0.35 * 0.353;
-        layer.use_text(&date_str, 5.0, Mm(cx - date_w / 2.0), Mm(cy - 6.5), &font);
+            layer.set_fill_color(Color::Rgb(color.clone()));
+            let arc_radius = (r_outer + r_inner) / 2.0;
+            let top_text = data.company.to_uppercase();
+            draw_text_on_arc(&layer, &bold, &top_text, cx, cy, arc_radius, 6.5, true);
+            draw_text_on_arc(&layer, &bold, "BY: AUTHORIZED", cx, cy, arc_radius, 6.0, false);
+
+            layer.set_outline_thickness(0.8);
+            layer.add_line(Line { points: vec![
+                (Point::new(Mm(cx - 15.0), Mm(cy + 5.0)), false),
+                (Point::new(Mm(cx + 15.0), Mm(cy + 5.0)), false),
+            ], is_closed: false });
+
+            let font_size = 14.0f32;
+            let char_w_mm = font_size * 0.6 * 0.353;
+            let text_w = stamp_text.len() as f32 * char_w_mm;
+            layer.use_text(stamp_text, font_size, Mm(cx - text_w / 2.0), Mm(cy - 1.5), &bold);
+
+            layer.add_line(Line { points: vec![
+                (Point::new(Mm(cx - 15.0), Mm(cy - 2.5)), false),
+                (Point::new(Mm(cx + 15.0), Mm(cy - 2.5)), false),
+            ], is_closed: false });
+
+            let date_str = chrono::Utc::now().format("DATE: %d/%m/%Y").to_string();
+            let date_w = date_str.len() as f32 * 5.0 * 0.35 * 0.353;
+            layer.use_text(&date_str, 5.0, Mm(cx - date_w / 2.0), Mm(cy - 6.5), &font);
+        }
     }
 
     match doc.save(&mut std::io::BufWriter::new(std::fs::File::create(&data.output).unwrap())) {
