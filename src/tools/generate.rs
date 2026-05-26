@@ -10,6 +10,7 @@ pub struct InvoiceData {
     pub style: String,
     pub qr_data: Option<String>,
     pub qr_size: String,
+    pub qr_position: String,
 }
 
 pub fn create_invoice(data: InvoiceData) -> String {
@@ -132,20 +133,33 @@ pub fn create_invoice(data: InvoiceData) -> String {
                 interpolate: false, image_data: rgb,
                 image_filter: None, clipping_bbox: None, smask: None,
             });
-            // Scale based on qr_size: tiny=25mm, small=100mm, medium=250mm, large=500mm
-            // Base image at 6px/module is ~150px = ~53mm at 1:1
-            // To get target mm: scale = target_mm / 53
+            // Calculate QR size
+            let base_mm = img_size as f32 * 0.353;
             let target_mm = match data.qr_size.as_str() {
                 "tiny" => 25.0f32,
                 "small" => 100.0f32,
                 "large" => 500.0f32,
-                _ => 250.0f32, // medium (default)
+                _ => 250.0f32,
             };
-            let base_mm = img_size as f32 * 0.353; // pixels to mm at 72dpi (1pt=0.353mm)
-            let qr_scale = target_mm / base_mm;
+
+            // Calculate position respecting page margins
+            // A4: 210mm x 297mm, margins: 15mm
+            let margin = 15.0f32;
+            let page_w = 210.0f32;
+            let page_h = 297.0f32;
+            let qr_mm = target_mm.min(page_w - 2.0 * margin).min(page_h - 2.0 * margin); // clamp to fit
+            let qr_scale = qr_mm / base_mm;
+
+            let (tx, ty) = match data.qr_position.as_str() {
+                "top-left" => (margin, page_h - margin - qr_mm),
+                "top-right" => (page_w - margin - qr_mm, page_h - margin - qr_mm),
+                "bottom-left" => (margin, margin),
+                "center" => ((page_w - qr_mm) / 2.0, (page_h - qr_mm) / 2.0),
+                _ => (page_w - margin - qr_mm, margin), // bottom-right (default)
+            };
 
             image.add_to_layer(layer.clone(), ImageTransform {
-                translate_x: Some(Mm(168.0)), translate_y: Some(Mm(28.0)),
+                translate_x: Some(Mm(tx)), translate_y: Some(Mm(ty)),
                 scale_x: Some(qr_scale), scale_y: Some(qr_scale),
                 ..Default::default()
             });

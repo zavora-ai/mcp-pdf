@@ -60,6 +60,8 @@ pub struct InvoiceInput {
     pub qr_data: Option<String>,
     /// QR size: "tiny" (25mm), "small" (100mm), "medium" (250mm, default), "large" (500mm)
     pub qr_size: Option<String>,
+    /// QR position: "bottom-right" (default), "bottom-left", "top-right", "top-left", "center"
+    pub qr_position: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -303,6 +305,7 @@ impl PdfServer {
             style: input.style.unwrap_or("minimal".into()),
             qr_data: input.qr_data,
             qr_size: input.qr_size.unwrap_or("medium".into()),
+            qr_position: input.qr_position.unwrap_or("bottom-right".into()),
         };
         generate::create_invoice(data)
     }
