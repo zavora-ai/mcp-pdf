@@ -252,7 +252,7 @@ pub struct PurchaseOrderInput {
 
 // --- Tool Router ---
 
-#[tool_router(server_handler)]
+#[tool_router]
 impl PdfServer {
     // === PILLAR 1: Inspect ===
     #[tool(description = "Full structural profile of a PDF: pages, fonts, images, forms, signatures, encryption")]
@@ -595,4 +595,11 @@ impl PdfServer {
         let items: Vec<(String, u32, i64)> = input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect();
         generate::create_purchase_order(&input.output, &input.buyer, &input.vendor, &input.po_number.unwrap_or("PO-001".into()), &items, input.terms.as_deref())
     }
+}
+
+adk_mcp_sdk::mcp_2026_server! {
+    server: PdfServer,
+    task_tools: ["scan_sensitive_data"],
+    approval_tools: [],
+    cache_ttl_ms: 60_000,
 }
