@@ -1,7 +1,8 @@
 [package]
 name = "mcp-pdf"
-version = "3.0.1"
+version = "3.1.0"
 edition = "2021"
+rust-version = "1.94.1"
 description = "The PDF Operating Layer for AI Agents — 57 tools for inspect, extract, generate, convert, manipulate, secure, and fill PDFs"
 license = "Apache-2.0"
 repository = "https://github.com/zavora-ai/mcp-pdf"
@@ -11,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 rmcp = { version = "3.1.2", features = ["server", "transport-io", "macros"] }
+adk-mcp-sdk = { version = "0.2.0", git = "https://github.com/zavora-ai/adk-mcp-sdk.git", rev = "4dac4301441a8a51a042fd66cc1798f0ec3e3f55" }
 schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

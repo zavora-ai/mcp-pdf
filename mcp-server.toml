@@ -1,34 +1,410 @@
-[server]
-name = "mcp-pdf"
-version = "3.0.0"
-description = "The PDF Operating Layer for AI Agents"
-author = "Zavora AI"
-license = "Apache-2.0"
-repository = "https://github.com/zavora-ai/mcp-pdf"
-homepage = "https://zavora.ai"
+server_id = "mcp_pdf"
+display_name = "Pdf"
+version = "3.1.0"
+domain = "pdf"
+sdk_version = "0.2.0"
+risk_level = "critical"
+writes_allowed = "gated"
+transports = ["stdio"]
+credentials = []
+governance_gates = []
+environments = ["development", "staging", "production"]
 
-[capabilities]
-tools = true
-resources = false
-prompts = false
+[[tools]]
+name = "inspect_pdf"
+description = "Full structural profile of a PDF: pages, fonts, images, forms, signatures, encryption"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
 
-[runtime]
-transport = "stdio"
-binary = "mcp-pdf"
-install = "cargo install mcp-pdf"
+[[tools]]
+name = "get_page_count"
+description = "Get page count of a PDF"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
 
-[tools]
-count = 57
-categories = ["inspect", "extract", "generate", "convert", "manipulate", "numbering", "security", "forms"]
+[[tools]]
+name = "get_info"
+description = "Quick metadata: pages, size, version, encryption, title, author"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
 
-[tools.risk_classes]
-read_only = ["inspect_pdf", "classify_pdf", "health_check_pdf", "detect_features", "profile_complexity", "get_page_count", "get_info", "extract_text", "extract_page_text", "extract_metadata", "extract_tables", "extract_images", "extract_bookmarks", "extract_annotations", "extract_key_values", "detect_form_fields", "describe_form_layout", "scan_sensitive_data", "detect_active_content", "hash_pdf", "pdf_to_markdown"]
-write_local = ["create_invoice", "create_receipt", "create_quote", "create_statement", "create_purchase_order", "create_letter", "create_certificate", "create_report", "create_contract", "merge_pdfs", "split_pdf", "split_by_bookmarks", "rotate_pages", "crop_pages", "reorder_pages", "delete_pages", "compress_pdf", "add_watermark", "add_headers_footers", "add_page_numbers", "add_bates_numbers", "repair_pdf", "fill_form", "flatten_form", "fill_flat_form", "pdf_to_html", "pdf_to_json", "pdf_to_csv", "markdown_to_pdf", "images_to_pdf", "remove_metadata", "sanitize_pdf"]
-security_sensitive = ["encrypt_pdf", "decrypt_pdf", "set_permissions", "redact_pdf"]
+[[tools]]
+name = "classify_pdf"
+description = "Classify document type: invoice, contract, form, scan, report, letter, certificate"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
 
-[credentials]
-required = false
+[[tools]]
+name = "health_check_pdf"
+description = "Check PDF health: corruption, xref errors, broken objects"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
 
-[health]
-endpoint = "tools/list"
-interval_seconds = 30
+[[tools]]
+name = "detect_features"
+description = "Detect features: forms, tags, signatures, JavaScript, embedded files"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "profile_complexity"
+description = "Rate extraction difficulty: simple to extreme (1-5 scale)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "repair_pdf"
+description = "Repair corrupted PDF: rebuild xref, fix streams"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_text"
+description = "Extract all text from a PDF"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_page_text"
+description = "Extract text from a specific page"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_metadata"
+description = "Extract document metadata: title, author, dates, creator, producer"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_tables"
+description = "Extract tables as JSON arrays with headers and rows"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_images"
+description = "Extract embedded images info from PDF"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_bookmarks"
+description = "Extract bookmark/outline tree"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_annotations"
+description = "Extract annotations: comments, highlights, stamps"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "extract_key_values"
+description = "Extract key-value pairs (label: value patterns)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "merge_pdfs"
+description = "Merge multiple PDFs into one"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "split_pdf"
+description = "Split PDF by page ranges into a new file"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "rotate_pages"
+description = "Rotate pages by 90, 180, or 270 degrees"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "compress_pdf"
+description = "Compress PDF to reduce file size"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "delete_pages"
+description = "Delete specified pages from a PDF"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "reorder_pages"
+description = "Reorder pages by index array"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "crop_pages"
+description = "Crop pages to a bounding box [left, bottom, right, top] in points"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "add_watermark"
+description = "Add text watermark to all pages (e.g., CONFIDENTIAL, DRAFT)"
+risk_class = "generated_write_draft"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "add_page_numbers"
+description = "Add page numbers to all pages"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "add_bates_numbers"
+description = "Add Bates numbering for legal documents"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_invoice"
+description = "Generate professional invoice PDF with line items, tax, logo, style"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_receipt"
+description = "Generate payment receipt PDF"
+risk_class = "financial_action"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_letter"
+description = "Generate business letter with letterhead"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_certificate"
+description = "Generate certificate (styles: classic, modern, elegant, academic, minimal)"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_report"
+description = "Generate multi-section report PDF"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_contract"
+description = "Generate contract with clauses and signature blocks"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "hash_pdf"
+description = "SHA-256 hash of a PDF for integrity verification"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "encrypt_pdf"
+description = "Encrypt PDF with password protection"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "scan_sensitive_data"
+description = "Scan PDF for sensitive data: emails, phones, SSNs, credit cards"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "redact_pdf"
+description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "sanitize_pdf"
+description = "Sanitize PDF: remove JavaScript, actions, embedded files, metadata"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "remove_metadata"
+description = "Remove all metadata from PDF (author, dates, creator, XMP)"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "detect_active_content"
+description = "Detect active content: JavaScript, actions, embedded files"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "decrypt_pdf"
+description = "Decrypt a password-protected PDF"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "set_permissions"
+description = "Set PDF permissions (print, copy, edit) with owner password"
+risk_class = "identity_security_action"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "detect_form_fields"
+description = "Detect form fields in a PDF: names, types, current values"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "fill_form"
+description = "Fill form fields by name-value map"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "flatten_form"
+description = "Flatten form (make fields non-editable, burn values into page)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "fill_flat_form"
+description = "Fill a flat/scanned form by overlaying text at x,y positions (mm). For non-interactive PDFs."
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "describe_form_layout"
+description = "Describe form layout: page size, text labels, and detected field underlines with positions in mm. Use before fill_flat_form to find correct coordinates."
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "pdf_to_markdown"
+description = "Convert PDF to Markdown with high fidelity (headings, tables, layout preserved)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "pdf_to_html"
+description = "Convert PDF to HTML with structure preservation"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "pdf_to_json"
+description = "Convert PDF to structured JSON (text + markdown per page)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "pdf_to_csv"
+description = "Extract tables from PDF as CSV"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "markdown_to_pdf"
+description = "Convert Markdown to styled PDF"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "images_to_pdf"
+description = "Convert images to PDF (one image per page, auto-scaled to fit)"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "add_headers_footers"
+description = "Add headers and footers to all pages. Use {page} and {total} as placeholders."
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "split_by_bookmarks"
+description = "Split PDF into separate files by bookmark sections"
+risk_class = "read_only"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_quote"
+description = "Generate price quote/estimate PDF"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_statement"
+description = "Generate account/financial statement PDF"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
+
+[[tools]]
+name = "create_purchase_order"
+description = "Generate purchase order PDF"
+risk_class = "internal_write"
+requires_approval = false
+credential_bindings = []
