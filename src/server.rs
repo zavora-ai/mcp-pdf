@@ -1,7 +1,7 @@
-use rmcp::{tool, tool_router, schemars};
+use crate::tools::{convert, extract, forms, generate, inspect, manipulate, numbering, security};
 use rmcp::handler::server::wrapper::Parameters;
+use rmcp::{schemars, tool, tool_router};
 use serde::Deserialize;
-use crate::tools::{inspect, extract, manipulate, numbering, generate, security, forms, convert};
 
 #[derive(Clone)]
 pub struct PdfServer;
@@ -9,43 +9,91 @@ pub struct PdfServer;
 // --- Input structs ---
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct PdfPathInput { pub pdf_path: String }
+pub struct PdfPathInput {
+    pub pdf_path: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct RepairInput { pub pdf_path: String, pub output: String }
+pub struct RepairInput {
+    pub pdf_path: String,
+    pub output: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct PageTextInput { pub pdf_path: String, pub page_number: u32 }
+pub struct PageTextInput {
+    pub pdf_path: String,
+    pub page_number: u32,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct MergeInput { pub pdf_paths: Vec<String>, pub output: String }
+pub struct MergeInput {
+    pub pdf_paths: Vec<String>,
+    pub output: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct SplitInput { pub pdf_path: String, pub pages: String, pub output: String }
+pub struct SplitInput {
+    pub pdf_path: String,
+    pub pages: String,
+    pub output: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct RotateInput { pub pdf_path: String, pub output: String, pub degrees: u32 }
+pub struct RotateInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub degrees: u32,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct OutputInput { pub pdf_path: String, pub output: String }
+pub struct OutputInput {
+    pub pdf_path: String,
+    pub output: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct DeletePagesInput { pub pdf_path: String, pub output: String, pub pages: Vec<u32> }
+pub struct DeletePagesInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub pages: Vec<u32>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ReorderInput { pub pdf_path: String, pub output: String, pub order: Vec<u32> }
+pub struct ReorderInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub order: Vec<u32>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct CropInput { pub pdf_path: String, pub output: String, pub crop_box: [f32; 4] }
+pub struct CropInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub crop_box: [f32; 4],
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct WatermarkInput { pub pdf_path: String, pub output: String, pub text: Option<String> }
+pub struct WatermarkInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub text: Option<String>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct PageNumbersInput { pub pdf_path: String, pub output: String, pub position: Option<String> }
+pub struct PageNumbersInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub position: Option<String>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct BatesInput { pub pdf_path: String, pub output: String, pub prefix: String, pub start: u32, pub digits: Option<u32> }
+pub struct BatesInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub prefix: String,
+    pub start: u32,
+    pub digits: Option<u32>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct InvoiceInput {
@@ -65,7 +113,11 @@ pub struct InvoiceInput {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct InvoiceItem { pub description: String, pub quantity: u32, pub unit_price_cents: i64 }
+pub struct InvoiceItem {
+    pub description: String,
+    pub quantity: u32,
+    pub unit_price_cents: i64,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ReceiptInput {
@@ -117,7 +169,10 @@ pub struct ReportInput {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ReportSection { pub heading: String, pub body: String }
+pub struct ReportSection {
+    pub heading: String,
+    pub body: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ContractInput {
@@ -130,13 +185,24 @@ pub struct ContractInput {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ContractClause { pub title: String, pub body: String }
+pub struct ContractClause {
+    pub title: String,
+    pub body: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct EncryptInput { pub pdf_path: String, pub output: String, pub owner_password: String, pub user_password: Option<String> }
+pub struct EncryptInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub owner_password: String,
+    pub user_password: Option<String>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ScanSensitiveInput { pub pdf_path: String, pub categories: Option<Vec<String>> }
+pub struct ScanSensitiveInput {
+    pub pdf_path: String,
+    pub categories: Option<Vec<String>>,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct RedactInput {
@@ -148,7 +214,11 @@ pub struct RedactInput {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct DecryptInput { pub pdf_path: String, pub output: String, pub password: String }
+pub struct DecryptInput {
+    pub pdf_path: String,
+    pub output: String,
+    pub password: String,
+}
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct PermissionsInput {
@@ -255,7 +325,9 @@ pub struct PurchaseOrderInput {
 #[tool_router]
 impl PdfServer {
     // === PILLAR 1: Inspect ===
-    #[tool(description = "Full structural profile of a PDF: pages, fonts, images, forms, signatures, encryption")]
+    #[tool(
+        description = "Full structural profile of a PDF: pages, fonts, images, forms, signatures, encryption"
+    )]
     async fn inspect_pdf(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
         inspect::inspect_pdf(&input.pdf_path)
     }
@@ -270,7 +342,9 @@ impl PdfServer {
         inspect::get_info(&input.pdf_path)
     }
 
-    #[tool(description = "Classify document type: invoice, contract, form, scan, report, letter, certificate")]
+    #[tool(
+        description = "Classify document type: invoice, contract, form, scan, report, letter, certificate"
+    )]
     async fn classify_pdf(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
         inspect::classify_pdf(&input.pdf_path)
     }
@@ -385,7 +459,13 @@ impl PdfServer {
 
     #[tool(description = "Add Bates numbering for legal documents")]
     async fn add_bates_numbers(&self, Parameters(input): Parameters<BatesInput>) -> String {
-        numbering::add_bates_numbers(&input.pdf_path, &input.output, &input.prefix, input.start, input.digits)
+        numbering::add_bates_numbers(
+            &input.pdf_path,
+            &input.output,
+            &input.prefix,
+            input.start,
+            input.digits,
+        )
     }
 
     // === PILLAR 7: Generate ===
@@ -394,7 +474,11 @@ impl PdfServer {
         let data = generate::InvoiceData {
             output: input.output,
             company: input.company,
-            items: input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect(),
+            items: input
+                .items
+                .into_iter()
+                .map(|i| (i.description, i.quantity, i.unit_price_cents))
+                .collect(),
             customer: input.customer.unwrap_or("Customer".into()),
             invoice_number: input.invoice_number.unwrap_or("INV-001".into()),
             logo: input.logo,
@@ -409,9 +493,15 @@ impl PdfServer {
     #[tool(description = "Generate payment receipt PDF")]
     async fn create_receipt(&self, Parameters(input): Parameters<ReceiptInput>) -> String {
         let data = generate::ReceiptData {
-            output: input.output, company: input.company, customer: input.customer,
+            output: input.output,
+            company: input.company,
+            customer: input.customer,
             receipt_number: input.receipt_number.unwrap_or("REC-001".into()),
-            items: input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect(),
+            items: input
+                .items
+                .into_iter()
+                .map(|i| (i.description, i.quantity, i.unit_price_cents))
+                .collect(),
             payment_method: input.payment_method.unwrap_or("Card".into()),
             _logo: input.logo,
             stamp: input.stamp,
@@ -424,18 +514,29 @@ impl PdfServer {
     #[tool(description = "Generate business letter with letterhead")]
     async fn create_letter(&self, Parameters(input): Parameters<LetterInput>) -> String {
         let data = generate::LetterData {
-            output: input.output, from_name: input.from_name, from_company: input.from_company,
-            to_name: input.to_name, to_company: input.to_company,
-            subject: input.subject, body: input.body, _logo: input.logo,
+            output: input.output,
+            from_name: input.from_name,
+            from_company: input.from_company,
+            to_name: input.to_name,
+            to_company: input.to_company,
+            subject: input.subject,
+            body: input.body,
+            _logo: input.logo,
         };
         generate::create_letter(data)
     }
 
-    #[tool(description = "Generate certificate (styles: classic, modern, elegant, academic, minimal)")]
+    #[tool(
+        description = "Generate certificate (styles: classic, modern, elegant, academic, minimal)"
+    )]
     async fn create_certificate(&self, Parameters(input): Parameters<CertificateInput>) -> String {
         let data = generate::CertificateData {
-            output: input.output, recipient: input.recipient, title: input.title,
-            description: input.description, issuer: input.issuer, date: input.date,
+            output: input.output,
+            recipient: input.recipient,
+            title: input.title,
+            description: input.description,
+            issuer: input.issuer,
+            date: input.date,
             style: input.style.unwrap_or("classic".into()),
         };
         generate::create_certificate(data)
@@ -444,8 +545,14 @@ impl PdfServer {
     #[tool(description = "Generate multi-section report PDF")]
     async fn create_report(&self, Parameters(input): Parameters<ReportInput>) -> String {
         let data = generate::ReportData {
-            output: input.output, title: input.title, author: input.author,
-            sections: input.sections.into_iter().map(|s| (s.heading, s.body)).collect(),
+            output: input.output,
+            title: input.title,
+            author: input.author,
+            sections: input
+                .sections
+                .into_iter()
+                .map(|s| (s.heading, s.body))
+                .collect(),
         };
         generate::create_report(data)
     }
@@ -453,9 +560,15 @@ impl PdfServer {
     #[tool(description = "Generate contract with clauses and signature blocks")]
     async fn create_contract(&self, Parameters(input): Parameters<ContractInput>) -> String {
         let data = generate::ContractData {
-            output: input.output, title: input.title, parties: input.parties,
+            output: input.output,
+            title: input.title,
+            parties: input.parties,
             effective_date: input.effective_date,
-            clauses: input.clauses.into_iter().map(|c| (c.title, c.body)).collect(),
+            clauses: input
+                .clauses
+                .into_iter()
+                .map(|c| (c.title, c.body))
+                .collect(),
             signatures: input.signatures,
         };
         generate::create_contract(data)
@@ -469,17 +582,32 @@ impl PdfServer {
 
     #[tool(description = "Encrypt PDF with password protection")]
     async fn encrypt_pdf(&self, Parameters(input): Parameters<EncryptInput>) -> String {
-        security::encrypt_pdf(&input.pdf_path, &input.output, &input.owner_password, input.user_password.as_deref())
+        security::encrypt_pdf(
+            &input.pdf_path,
+            &input.output,
+            &input.owner_password,
+            input.user_password.as_deref(),
+        )
     }
 
     #[tool(description = "Scan PDF for sensitive data: emails, phones, SSNs, credit cards")]
-    async fn scan_sensitive_data(&self, Parameters(input): Parameters<ScanSensitiveInput>) -> String {
+    async fn scan_sensitive_data(
+        &self,
+        Parameters(input): Parameters<ScanSensitiveInput>,
+    ) -> String {
         security::scan_sensitive_data(&input.pdf_path, input.categories.as_deref())
     }
 
-    #[tool(description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)")]
+    #[tool(
+        description = "Redact terms from PDF (true redaction: removes from content streams + strips metadata)"
+    )]
     async fn redact_pdf(&self, Parameters(input): Parameters<RedactInput>) -> String {
-        security::redact_pdf(&input.pdf_path, &input.output, &input.terms, input.mode.as_deref())
+        security::redact_pdf(
+            &input.pdf_path,
+            &input.output,
+            &input.terms,
+            input.mode.as_deref(),
+        )
     }
 
     #[tool(description = "Sanitize PDF: remove JavaScript, actions, embedded files, metadata")]
@@ -504,7 +632,14 @@ impl PdfServer {
 
     #[tool(description = "Set PDF permissions (print, copy, edit) with owner password")]
     async fn set_permissions(&self, Parameters(input): Parameters<PermissionsInput>) -> String {
-        security::set_permissions(&input.pdf_path, &input.output, &input.owner_password, input.allow_print.unwrap_or(true), input.allow_copy.unwrap_or(false), input.allow_edit.unwrap_or(false))
+        security::set_permissions(
+            &input.pdf_path,
+            &input.output,
+            &input.owner_password,
+            input.allow_print.unwrap_or(true),
+            input.allow_copy.unwrap_or(false),
+            input.allow_edit.unwrap_or(false),
+        )
     }
 
     // === PILLAR 10: Forms ===
@@ -523,21 +658,35 @@ impl PdfServer {
         forms::flatten_form(&input.pdf_path, &input.output)
     }
 
-    #[tool(description = "Fill a flat/scanned form by overlaying text at x,y positions (mm). For non-interactive PDFs.")]
+    #[tool(
+        description = "Fill a flat/scanned form by overlaying text at x,y positions (mm). For non-interactive PDFs."
+    )]
     async fn fill_flat_form(&self, Parameters(input): Parameters<FlatFormInput>) -> String {
-        let entries: Vec<forms::FlatFormEntry> = input.entries.into_iter().map(|e| forms::FlatFormEntry {
-            page: e.page, x: e.x, y: e.y, text: e.text, font_size: e.font_size,
-        }).collect();
+        let entries: Vec<forms::FlatFormEntry> = input
+            .entries
+            .into_iter()
+            .map(|e| forms::FlatFormEntry {
+                page: e.page,
+                x: e.x,
+                y: e.y,
+                text: e.text,
+                font_size: e.font_size,
+            })
+            .collect();
         forms::fill_flat_form(&input.pdf_path, &input.output, &entries)
     }
 
-    #[tool(description = "Describe form layout: page size, text labels, and detected field underlines with positions in mm. Use before fill_flat_form to find correct coordinates.")]
+    #[tool(
+        description = "Describe form layout: page size, text labels, and detected field underlines with positions in mm. Use before fill_flat_form to find correct coordinates."
+    )]
     async fn describe_form_layout(&self, Parameters(input): Parameters<PageTextInput>) -> String {
         forms::describe_form_layout(&input.pdf_path, input.page_number)
     }
 
     // === PILLAR 6: Convert ===
-    #[tool(description = "Convert PDF to Markdown with high fidelity (headings, tables, layout preserved)")]
+    #[tool(
+        description = "Convert PDF to Markdown with high fidelity (headings, tables, layout preserved)"
+    )]
     async fn pdf_to_markdown(&self, Parameters(input): Parameters<PdfPathInput>) -> String {
         convert::pdf_to_markdown(&input.pdf_path, None)
     }
@@ -568,32 +717,80 @@ impl PdfServer {
     }
 
     // === Additional tools ===
-    #[tool(description = "Add headers and footers to all pages. Use {page} and {total} as placeholders.")]
-    async fn add_headers_footers(&self, Parameters(input): Parameters<HeaderFooterInput>) -> String {
-        numbering::add_headers_footers(&input.pdf_path, &input.output, input.header.as_deref(), input.footer.as_deref())
+    #[tool(
+        description = "Add headers and footers to all pages. Use {page} and {total} as placeholders."
+    )]
+    async fn add_headers_footers(
+        &self,
+        Parameters(input): Parameters<HeaderFooterInput>,
+    ) -> String {
+        numbering::add_headers_footers(
+            &input.pdf_path,
+            &input.output,
+            input.header.as_deref(),
+            input.footer.as_deref(),
+        )
     }
 
     #[tool(description = "Split PDF into separate files by bookmark sections")]
-    async fn split_by_bookmarks(&self, Parameters(input): Parameters<SplitByBookmarksInput>) -> String {
+    async fn split_by_bookmarks(
+        &self,
+        Parameters(input): Parameters<SplitByBookmarksInput>,
+    ) -> String {
         numbering::split_by_bookmarks(&input.pdf_path, &input.output_dir)
     }
 
     #[tool(description = "Generate price quote/estimate PDF")]
     async fn create_quote(&self, Parameters(input): Parameters<QuoteInput>) -> String {
-        let items: Vec<(String, u32, i64)> = input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect();
-        generate::create_quote(&input.output, &input.company, &input.customer, &items, input.valid_until.as_deref(), input.notes.as_deref())
+        let items: Vec<(String, u32, i64)> = input
+            .items
+            .into_iter()
+            .map(|i| (i.description, i.quantity, i.unit_price_cents))
+            .collect();
+        generate::create_quote(
+            &input.output,
+            &input.company,
+            &input.customer,
+            &items,
+            input.valid_until.as_deref(),
+            input.notes.as_deref(),
+        )
     }
 
     #[tool(description = "Generate account/financial statement PDF")]
     async fn create_statement(&self, Parameters(input): Parameters<StatementInput>) -> String {
-        let txns: Vec<(String, String, i64)> = input.transactions.into_iter().map(|t| (t.date, t.description, t.amount_cents)).collect();
-        generate::create_statement(&input.output, &input.company, &input.account_holder, &input.period, &txns)
+        let txns: Vec<(String, String, i64)> = input
+            .transactions
+            .into_iter()
+            .map(|t| (t.date, t.description, t.amount_cents))
+            .collect();
+        generate::create_statement(
+            &input.output,
+            &input.company,
+            &input.account_holder,
+            &input.period,
+            &txns,
+        )
     }
 
     #[tool(description = "Generate purchase order PDF")]
-    async fn create_purchase_order(&self, Parameters(input): Parameters<PurchaseOrderInput>) -> String {
-        let items: Vec<(String, u32, i64)> = input.items.into_iter().map(|i| (i.description, i.quantity, i.unit_price_cents)).collect();
-        generate::create_purchase_order(&input.output, &input.buyer, &input.vendor, &input.po_number.unwrap_or("PO-001".into()), &items, input.terms.as_deref())
+    async fn create_purchase_order(
+        &self,
+        Parameters(input): Parameters<PurchaseOrderInput>,
+    ) -> String {
+        let items: Vec<(String, u32, i64)> = input
+            .items
+            .into_iter()
+            .map(|i| (i.description, i.quantity, i.unit_price_cents))
+            .collect();
+        generate::create_purchase_order(
+            &input.output,
+            &input.buyer,
+            &input.vendor,
+            &input.po_number.unwrap_or("PO-001".into()),
+            &items,
+            input.terms.as_deref(),
+        )
     }
 }
 

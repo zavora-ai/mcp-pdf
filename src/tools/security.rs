@@ -1,4 +1,4 @@
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 pub fn hash_pdf(pdf_path: &str) -> String {
     match std::fs::read(pdf_path) {
@@ -10,7 +10,12 @@ pub fn hash_pdf(pdf_path: &str) -> String {
     }
 }
 
-pub fn encrypt_pdf(pdf_path: &str, output: &str, owner_password: &str, user_password: Option<&str>) -> String {
+pub fn encrypt_pdf(
+    pdf_path: &str,
+    output: &str,
+    owner_password: &str,
+    user_password: Option<&str>,
+) -> String {
     match lopdf::Document::load(pdf_path) {
         Ok(mut doc) => {
             let user_pass = user_password.unwrap_or("");
@@ -30,25 +35,49 @@ pub fn encrypt_pdf(pdf_path: &str, output: &str, owner_password: &str, user_pass
 
             let p_value: i32 = -3904;
 
-            let o_value = compute_o_value(owner_password.as_bytes(), user_pass.as_bytes(), key_bytes, revision);
-            let enc_key = compute_encryption_key(user_pass.as_bytes(), &o_value, p_value, &file_id, key_bytes, revision);
+            let o_value = compute_o_value(
+                owner_password.as_bytes(),
+                user_pass.as_bytes(),
+                key_bytes,
+                revision,
+            );
+            let enc_key = compute_encryption_key(
+                user_pass.as_bytes(),
+                &o_value,
+                p_value,
+                &file_id,
+                key_bytes,
+                revision,
+            );
             let u_value = compute_u_value(&enc_key, &file_id, revision);
 
             // Build Encrypt dictionary
             let mut encrypt_dict = lopdf::Dictionary::new();
-            encrypt_dict.set(b"Filter".to_vec(), lopdf::Object::Name(b"Standard".to_vec()));
+            encrypt_dict.set(
+                b"Filter".to_vec(),
+                lopdf::Object::Name(b"Standard".to_vec()),
+            );
             encrypt_dict.set(b"V".to_vec(), lopdf::Object::Integer(version));
             encrypt_dict.set(b"R".to_vec(), lopdf::Object::Integer(revision));
             encrypt_dict.set(b"Length".to_vec(), lopdf::Object::Integer(128));
             encrypt_dict.set(b"P".to_vec(), lopdf::Object::Integer(p_value as i64));
-            encrypt_dict.set(b"O".to_vec(), lopdf::Object::String(o_value, lopdf::StringFormat::Literal));
-            encrypt_dict.set(b"U".to_vec(), lopdf::Object::String(u_value, lopdf::StringFormat::Literal));
+            encrypt_dict.set(
+                b"O".to_vec(),
+                lopdf::Object::String(o_value, lopdf::StringFormat::Literal),
+            );
+            encrypt_dict.set(
+                b"U".to_vec(),
+                lopdf::Object::String(u_value, lopdf::StringFormat::Literal),
+            );
             encrypt_dict.set(b"EncryptMetadata".to_vec(), lopdf::Object::Boolean(true));
 
             // CF dict for AES
             let mut std_cf = lopdf::Dictionary::new();
             std_cf.set(b"CFM".to_vec(), lopdf::Object::Name(b"AESV2".to_vec()));
-            std_cf.set(b"AuthEvent".to_vec(), lopdf::Object::Name(b"DocOpen".to_vec()));
+            std_cf.set(
+                b"AuthEvent".to_vec(),
+                lopdf::Object::Name(b"DocOpen".to_vec()),
+            );
             std_cf.set(b"Length".to_vec(), lopdf::Object::Integer(16));
             let mut cf = lopdf::Dictionary::new();
             cf.set(b"StdCF".to_vec(), lopdf::Object::Dictionary(std_cf));
@@ -57,7 +86,8 @@ pub fn encrypt_pdf(pdf_path: &str, output: &str, owner_password: &str, user_pass
             encrypt_dict.set(b"StrF".to_vec(), lopdf::Object::Name(b"StdCF".to_vec()));
 
             let encrypt_id = doc.add_object(lopdf::Object::Dictionary(encrypt_dict));
-            doc.trailer.set(b"Encrypt".to_vec(), lopdf::Object::Reference(encrypt_id));
+            doc.trailer
+                .set(b"Encrypt".to_vec(), lopdf::Object::Reference(encrypt_id));
 
             // Set file ID in trailer
             let id_obj = lopdf::Object::Array(vec![
@@ -77,9 +107,8 @@ pub fn encrypt_pdf(pdf_path: &str, output: &str, owner_password: &str, user_pass
 
 // PDF password padding (Table 2, PDF spec)
 const PASSWORD_PADDING: [u8; 32] = [
-    0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56,
-    0xFF, 0xFA, 0x01, 0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80,
-    0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
+    0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08,
+    0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
 ];
 
 fn pad_password(password: &[u8]) -> [u8; 32] {
@@ -109,7 +138,12 @@ fn rc4(key: &[u8], data: &[u8]) -> Vec<u8> {
     output
 }
 
-fn compute_o_value(owner_pass: &[u8], user_pass: &[u8], key_bytes: usize, revision: i64) -> Vec<u8> {
+fn compute_o_value(
+    owner_pass: &[u8],
+    user_pass: &[u8],
+    key_bytes: usize,
+    revision: i64,
+) -> Vec<u8> {
     let padded_owner = pad_password(owner_pass);
     let mut hash = md5::compute(padded_owner).0.to_vec();
     if revision >= 3 {
@@ -130,7 +164,14 @@ fn compute_o_value(owner_pass: &[u8], user_pass: &[u8], key_bytes: usize, revisi
     o
 }
 
-fn compute_encryption_key(password: &[u8], o_value: &[u8], p_value: i32, file_id: &[u8], key_bytes: usize, revision: i64) -> Vec<u8> {
+fn compute_encryption_key(
+    password: &[u8],
+    o_value: &[u8],
+    p_value: i32,
+    file_id: &[u8],
+    key_bytes: usize,
+    revision: i64,
+) -> Vec<u8> {
     let padded = pad_password(password);
     let mut ctx = md5::Context::new();
     ctx.consume(padded);
@@ -170,7 +211,12 @@ pub fn scan_sensitive_data(pdf_path: &str, categories: Option<&[String]>) -> Str
         Ok(t) => t,
         Err(e) => return serde_json::json!({"error": e.to_string()}).to_string(),
     };
-    let default_cats = vec!["email".to_string(), "phone".to_string(), "ssn".to_string(), "credit_card".to_string()];
+    let default_cats = vec![
+        "email".to_string(),
+        "phone".to_string(),
+        "ssn".to_string(),
+        "credit_card".to_string(),
+    ];
     let cats = categories.unwrap_or(&default_cats);
     let mut findings = Vec::<serde_json::Value>::new();
     for cat in cats {
@@ -185,14 +231,29 @@ pub fn scan_sensitive_data(pdf_path: &str, categories: Option<&[String]>) -> Str
         if let Ok(re) = regex::Regex::new(pattern) {
             let matches: Vec<&str> = re.find_iter(&text).map(|m| m.as_str()).collect();
             if !matches.is_empty() {
-                let masked: Vec<String> = matches.iter().map(|m| {
-                    if m.len() > 4 { format!("{}***{}", &m[..2], &m[m.len()-2..]) } else { "***".into() }
-                }).collect();
-                findings.push(serde_json::json!({"category": cat, "count": matches.len(), "samples": masked}));
+                let masked: Vec<String> = matches
+                    .iter()
+                    .map(|m| {
+                        if m.len() > 4 {
+                            format!("{}***{}", &m[..2], &m[m.len() - 2..])
+                        } else {
+                            "***".into()
+                        }
+                    })
+                    .collect();
+                findings.push(
+                    serde_json::json!({"category": cat, "count": matches.len(), "samples": masked}),
+                );
             }
         }
     }
-    let risk = if findings.len() > 3 { "high" } else if !findings.is_empty() { "medium" } else { "low" };
+    let risk = if findings.len() > 3 {
+        "high"
+    } else if !findings.is_empty() {
+        "medium"
+    } else {
+        "low"
+    };
     serde_json::json!({"findings": findings, "total_categories": findings.len(), "risk_level": risk}).to_string()
 }
 
@@ -210,9 +271,9 @@ pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String], mode: Option<&
                     } else {
                         " ".repeat(term.len())
                     };
-                    match doc.replace_partial_text(page_num, term, &replacement, None) {
-                        Ok(count) => redacted_count += count as u32,
-                        Err(_) => {}
+                    if let Ok(count) = doc.replace_partial_text(page_num, term, &replacement, None)
+                    {
+                        redacted_count += count as u32
                     }
                 }
             }
@@ -230,13 +291,14 @@ pub fn redact_pdf(pdf_path: &str, output: &str, terms: &[String], mode: Option<&
 
             match doc.save(output) {
                 Ok(_) => {
-                    let hash = Sha256::digest(&std::fs::read(output).unwrap_or_default());
+                    let hash = Sha256::digest(std::fs::read(output).unwrap_or_default());
                     serde_json::json!({
                         "output": output,
                         "redactions_applied": redacted_count,
                         "metadata_stripped": true,
                         "sha256": format!("{:x}", hash),
-                    }).to_string()
+                    })
+                    .to_string()
                 }
                 Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
             }
@@ -256,10 +318,18 @@ pub fn sanitize_pdf(pdf_path: &str, output: &str) -> String {
             // Remove JS from catalog
             if let Ok(catalog_id) = doc.trailer.get(b"Root").and_then(|r| r.as_reference()) {
                 if let Ok(catalog) = doc.get_dictionary_mut(catalog_id) {
-                    if catalog.remove(b"JavaScript").is_some() { removed.push("javascript"); }
-                    if catalog.remove(b"Names").is_some() { removed.push("names_tree"); }
-                    if catalog.remove(b"OpenAction").is_some() { removed.push("open_action"); }
-                    if catalog.remove(b"AA").is_some() { removed.push("additional_actions"); }
+                    if catalog.remove(b"JavaScript").is_some() {
+                        removed.push("javascript");
+                    }
+                    if catalog.remove(b"Names").is_some() {
+                        removed.push("names_tree");
+                    }
+                    if catalog.remove(b"OpenAction").is_some() {
+                        removed.push("open_action");
+                    }
+                    if catalog.remove(b"AA").is_some() {
+                        removed.push("additional_actions");
+                    }
                 }
             }
 
@@ -272,7 +342,10 @@ pub fn sanitize_pdf(pdf_path: &str, output: &str) -> String {
             removed.push("metadata");
 
             match doc.save(output) {
-                Ok(_) => serde_json::json!({"output": output, "sanitized": true, "removed": removed}).to_string(),
+                Ok(_) => {
+                    serde_json::json!({"output": output, "sanitized": true, "removed": removed})
+                        .to_string()
+                }
                 Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
             }
         }
@@ -291,7 +364,9 @@ pub fn remove_metadata(pdf_path: &str, output: &str) -> String {
                 }
             }
             match doc.save(output) {
-                Ok(_) => serde_json::json!({"output": output, "metadata_removed": true}).to_string(),
+                Ok(_) => {
+                    serde_json::json!({"output": output, "metadata_removed": true}).to_string()
+                }
                 Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
             }
         }
@@ -306,27 +381,47 @@ pub fn detect_active_content(pdf_path: &str) -> String {
 
             // Check catalog for JavaScript/OpenAction
             if let Ok(catalog) = doc.catalog() {
-                if catalog.get(b"JavaScript").is_ok() { findings.push(serde_json::json!({"type": "javascript", "location": "catalog"})); }
-                if catalog.get(b"OpenAction").is_ok() { findings.push(serde_json::json!({"type": "open_action", "location": "catalog"})); }
-                if catalog.get(b"AA").is_ok() { findings.push(serde_json::json!({"type": "additional_actions", "location": "catalog"})); }
+                if catalog.get(b"JavaScript").is_ok() {
+                    findings.push(serde_json::json!({"type": "javascript", "location": "catalog"}));
+                }
+                if catalog.get(b"OpenAction").is_ok() {
+                    findings
+                        .push(serde_json::json!({"type": "open_action", "location": "catalog"}));
+                }
+                if catalog.get(b"AA").is_ok() {
+                    findings.push(
+                        serde_json::json!({"type": "additional_actions", "location": "catalog"}),
+                    );
+                }
             }
 
             // Check pages for actions
             for (page_num, &page_id) in &doc.get_pages() {
                 if let Ok(page) = doc.get_dictionary(page_id) {
-                    if page.get(b"AA").is_ok() { findings.push(serde_json::json!({"type": "page_action", "page": page_num})); }
+                    if page.get(b"AA").is_ok() {
+                        findings.push(serde_json::json!({"type": "page_action", "page": page_num}));
+                    }
                 }
             }
 
             // Check for embedded files
             if let Ok(catalog) = doc.catalog() {
                 if let Ok(names) = catalog.get(b"Names").and_then(|n| n.as_dict()) {
-                    if names.get(b"EmbeddedFiles").is_ok() { findings.push(serde_json::json!({"type": "embedded_files"})); }
+                    if names.get(b"EmbeddedFiles").is_ok() {
+                        findings.push(serde_json::json!({"type": "embedded_files"}));
+                    }
                 }
             }
 
-            let risk = if findings.is_empty() { "none" } else if findings.len() > 2 { "high" } else { "medium" };
-            serde_json::json!({"findings": findings, "count": findings.len(), "risk_level": risk}).to_string()
+            let risk = if findings.is_empty() {
+                "none"
+            } else if findings.len() > 2 {
+                "high"
+            } else {
+                "medium"
+            };
+            serde_json::json!({"findings": findings, "count": findings.len(), "risk_level": risk})
+                .to_string()
         }
         Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
     }
@@ -343,23 +438,40 @@ pub fn decrypt_pdf(pdf_path: &str, output: &str, password: &str) -> String {
                     // Remove encryption dict
                     doc.trailer.remove(b"Encrypt");
                     match doc.save(output) {
-                        Ok(_) => serde_json::json!({"output": output, "decrypted": true}).to_string(),
+                        Ok(_) => {
+                            serde_json::json!({"output": output, "decrypted": true}).to_string()
+                        }
                         Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
                     }
                 }
-                Err(e) => serde_json::json!({"error": format!("Decryption failed: {}", e)}).to_string(),
+                Err(e) => {
+                    serde_json::json!({"error": format!("Decryption failed: {}", e)}).to_string()
+                }
             }
         }
         Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
     }
 }
 
-pub fn set_permissions(pdf_path: &str, output: &str, owner_password: &str, allow_print: bool, allow_copy: bool, allow_edit: bool) -> String {
+pub fn set_permissions(
+    pdf_path: &str,
+    output: &str,
+    owner_password: &str,
+    allow_print: bool,
+    allow_copy: bool,
+    allow_edit: bool,
+) -> String {
     // Compute P value from permissions
     let mut p: i32 = -3392; // base: all restricted
-    if allow_print { p |= 0x04; }  // bit 3
-    if allow_edit { p |= 0x08; }   // bit 4
-    if allow_copy { p |= 0x10; }   // bit 5
+    if allow_print {
+        p |= 0x04;
+    } // bit 3
+    if allow_edit {
+        p |= 0x08;
+    } // bit 4
+    if allow_copy {
+        p |= 0x10;
+    } // bit 5
 
     // Re-encrypt with new permissions using our encrypt function
     // First load, set permissions in encrypt dict
@@ -379,16 +491,26 @@ pub fn set_permissions(pdf_path: &str, output: &str, owner_password: &str, allow
             let u_value = compute_u_value(&enc_key, &file_id, revision);
 
             let mut encrypt_dict = lopdf::Dictionary::new();
-            encrypt_dict.set(b"Filter".to_vec(), lopdf::Object::Name(b"Standard".to_vec()));
+            encrypt_dict.set(
+                b"Filter".to_vec(),
+                lopdf::Object::Name(b"Standard".to_vec()),
+            );
             encrypt_dict.set(b"V".to_vec(), lopdf::Object::Integer(4));
             encrypt_dict.set(b"R".to_vec(), lopdf::Object::Integer(revision));
             encrypt_dict.set(b"Length".to_vec(), lopdf::Object::Integer(128));
             encrypt_dict.set(b"P".to_vec(), lopdf::Object::Integer(p as i64));
-            encrypt_dict.set(b"O".to_vec(), lopdf::Object::String(o_value, lopdf::StringFormat::Literal));
-            encrypt_dict.set(b"U".to_vec(), lopdf::Object::String(u_value, lopdf::StringFormat::Literal));
+            encrypt_dict.set(
+                b"O".to_vec(),
+                lopdf::Object::String(o_value, lopdf::StringFormat::Literal),
+            );
+            encrypt_dict.set(
+                b"U".to_vec(),
+                lopdf::Object::String(u_value, lopdf::StringFormat::Literal),
+            );
 
             let encrypt_id = doc.add_object(lopdf::Object::Dictionary(encrypt_dict));
-            doc.trailer.set(b"Encrypt".to_vec(), lopdf::Object::Reference(encrypt_id));
+            doc.trailer
+                .set(b"Encrypt".to_vec(), lopdf::Object::Reference(encrypt_id));
             let id_obj = lopdf::Object::Array(vec![
                 lopdf::Object::String(file_id.clone(), lopdf::StringFormat::Literal),
                 lopdf::Object::String(file_id, lopdf::StringFormat::Literal),

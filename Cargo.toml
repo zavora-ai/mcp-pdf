@@ -1,6 +1,6 @@
 [package]
 name = "mcp-pdf"
-version = "3.1.0"
+version = "3.1.1"
 edition = "2021"
 rust-version = "1.94.1"
 description = "The PDF Operating Layer for AI Agents — 57 tools for inspect, extract, generate, convert, manipulate, secure, and fill PDFs"
@@ -17,11 +17,11 @@ schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-lopdf = "0.40"
-printpdf = { version = "0.7", features = ["embedded_images"] }
+lopdf = { version = "0.42", default-features = false }
+printpdf = { package = "zavora-printpdf", version = "0.7.1", default-features = false, features = ["embedded_images"] }
 image_crate = { package = "image", version = "0.24" }
 pdf_oxide = "0.3"
-pdf-extract = "0.10"
+pdf-extract = "0.12"
 chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 regex = "1"

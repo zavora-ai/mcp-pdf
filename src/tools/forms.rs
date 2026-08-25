@@ -31,15 +31,32 @@ pub fn detect_form_fields(pdf_path: &str) -> String {
                             for obj in annots {
                                 if let Ok(id) = obj.as_reference() {
                                     if let Ok(annot) = doc.get_dictionary(id) {
-                                        let subtype = annot.get(b"Subtype").and_then(|s| s.as_name()).unwrap_or(b"");
+                                        let subtype = annot
+                                            .get(b"Subtype")
+                                            .and_then(|s| s.as_name())
+                                            .unwrap_or(b"");
                                         if subtype == b"Widget" {
-                                            let name = annot.get(b"T").and_then(|t| t.as_str())
-                                                .map(|s| String::from_utf8_lossy(s).to_string()).unwrap_or_default();
-                                            let ft = annot.get(b"FT").and_then(|t| t.as_name())
-                                                .map(|n| match n { b"Tx" => "text", b"Btn" => "button", b"Ch" => "choice", b"Sig" => "signature", _ => "unknown" })
+                                            let name = annot
+                                                .get(b"T")
+                                                .and_then(|t| t.as_str())
+                                                .map(|s| String::from_utf8_lossy(s).to_string())
+                                                .unwrap_or_default();
+                                            let ft = annot
+                                                .get(b"FT")
+                                                .and_then(|t| t.as_name())
+                                                .map(|n| match n {
+                                                    b"Tx" => "text",
+                                                    b"Btn" => "button",
+                                                    b"Ch" => "choice",
+                                                    b"Sig" => "signature",
+                                                    _ => "unknown",
+                                                })
                                                 .unwrap_or("text");
-                                            let value = annot.get(b"V").and_then(|v| v.as_str())
-                                                .map(|s| String::from_utf8_lossy(s).to_string()).unwrap_or_default();
+                                            let value = annot
+                                                .get(b"V")
+                                                .and_then(|v| v.as_str())
+                                                .map(|s| String::from_utf8_lossy(s).to_string())
+                                                .unwrap_or_default();
                                             if !name.is_empty() {
                                                 fields.push(serde_json::json!({"name": name, "type": ft, "value": value, "page": page_num}));
                                             }
@@ -62,15 +79,33 @@ pub fn detect_form_fields(pdf_path: &str) -> String {
     }
 }
 
-fn collect_field(doc: &lopdf::Document, field_id: lopdf::ObjectId, fields: &mut Vec<serde_json::Value>) {
+fn collect_field(
+    doc: &lopdf::Document,
+    field_id: lopdf::ObjectId,
+    fields: &mut Vec<serde_json::Value>,
+) {
     if let Ok(field) = doc.get_dictionary(field_id) {
-        let name = field.get(b"T").and_then(|t| t.as_str())
-            .map(|s| String::from_utf8_lossy(s).to_string()).unwrap_or_default();
-        let field_type = field.get(b"FT").and_then(|t| t.as_name())
-            .map(|n| match n { b"Tx" => "text", b"Btn" => "button", b"Ch" => "choice", b"Sig" => "signature", _ => "unknown" })
+        let name = field
+            .get(b"T")
+            .and_then(|t| t.as_str())
+            .map(|s| String::from_utf8_lossy(s).to_string())
+            .unwrap_or_default();
+        let field_type = field
+            .get(b"FT")
+            .and_then(|t| t.as_name())
+            .map(|n| match n {
+                b"Tx" => "text",
+                b"Btn" => "button",
+                b"Ch" => "choice",
+                b"Sig" => "signature",
+                _ => "unknown",
+            })
             .unwrap_or("unknown");
-        let value = field.get(b"V").and_then(|v| v.as_str())
-            .map(|s| String::from_utf8_lossy(s).to_string()).unwrap_or_default();
+        let value = field
+            .get(b"V")
+            .and_then(|v| v.as_str())
+            .map(|s| String::from_utf8_lossy(s).to_string())
+            .unwrap_or_default();
 
         if !name.is_empty() {
             fields.push(serde_json::json!({"name": name, "type": field_type, "value": value}));
@@ -93,7 +128,10 @@ pub fn fill_form(pdf_path: &str, output: &str, field_values: &serde_json::Value)
             let mut filled = 0u32;
             let values = match field_values.as_object() {
                 Some(m) => m,
-                None => return serde_json::json!({"error": "field_values must be a JSON object"}).to_string(),
+                None => {
+                    return serde_json::json!({"error": "field_values must be a JSON object"})
+                        .to_string()
+                }
             };
 
             // Collect all field IDs (from AcroForm and page annotations)
@@ -109,7 +147,11 @@ pub fn fill_form(pdf_path: &str, output: &str, field_values: &serde_json::Value)
                     };
                     if let Some(af) = acroform {
                         if let Ok(arr) = af.get(b"Fields").and_then(|f| f.as_array()) {
-                            for r in arr { if let Ok(id) = r.as_reference() { field_ids.push(id); } }
+                            for r in arr {
+                                if let Ok(id) = r.as_reference() {
+                                    field_ids.push(id);
+                                }
+                            }
                         }
                     }
                 }
@@ -117,13 +159,15 @@ pub fn fill_form(pdf_path: &str, output: &str, field_values: &serde_json::Value)
 
             // Method 2: Page Widget annotations
             if field_ids.is_empty() {
-                for (_, &page_id) in &doc.get_pages() {
+                for &page_id in doc.get_pages().values() {
                     if let Ok(page) = doc.get_dictionary(page_id) {
                         if let Ok(annots) = page.get(b"Annots").and_then(|a| a.as_array()) {
                             for obj in annots {
                                 if let Ok(id) = obj.as_reference() {
                                     if let Ok(annot) = doc.get_dictionary(id) {
-                                        if annot.get(b"Subtype").and_then(|s| s.as_name()).ok() == Some(b"Widget") {
+                                        if annot.get(b"Subtype").and_then(|s| s.as_name()).ok()
+                                            == Some(b"Widget")
+                                        {
                                             field_ids.push(id);
                                         }
                                     }
@@ -137,12 +181,21 @@ pub fn fill_form(pdf_path: &str, output: &str, field_values: &serde_json::Value)
             // Fill matching fields
             for field_id in field_ids {
                 if let Ok(field) = doc.get_dictionary(field_id) {
-                    let name = field.get(b"T").and_then(|t| t.as_str())
-                        .map(|s| String::from_utf8_lossy(s).to_string()).unwrap_or_default();
+                    let name = field
+                        .get(b"T")
+                        .and_then(|t| t.as_str())
+                        .map(|s| String::from_utf8_lossy(s).to_string())
+                        .unwrap_or_default();
                     if let Some(new_val) = values.get(&name) {
                         let val_str = new_val.as_str().unwrap_or("").to_string();
                         if let Ok(field_mut) = doc.get_dictionary_mut(field_id) {
-                            field_mut.set(b"V".to_vec(), lopdf::Object::String(val_str.into_bytes(), lopdf::StringFormat::Literal));
+                            field_mut.set(
+                                b"V".to_vec(),
+                                lopdf::Object::String(
+                                    val_str.into_bytes(),
+                                    lopdf::StringFormat::Literal,
+                                ),
+                            );
                             filled += 1;
                         }
                     }
@@ -171,7 +224,9 @@ pub fn flatten_form(pdf_path: &str, output: &str) -> String {
                     // Find catalog object ID from trailer
                     match doc.trailer.get(b"Root").and_then(|r| r.as_reference()) {
                         Ok(id) => id,
-                        Err(_) => return serde_json::json!({"error": "Cannot find catalog"}).to_string(),
+                        Err(_) => {
+                            return serde_json::json!({"error": "Cannot find catalog"}).to_string()
+                        }
                     }
                 }
                 Err(e) => return serde_json::json!({"error": e.to_string()}).to_string(),
@@ -198,18 +253,24 @@ pub fn fill_flat_form(pdf_path: &str, output: &str, entries: &[FlatFormEntry]) -
             let mut fd = lopdf::Dictionary::new();
             fd.set(b"Type".to_vec(), lopdf::Object::Name(b"Font".to_vec()));
             fd.set(b"Subtype".to_vec(), lopdf::Object::Name(b"Type1".to_vec()));
-            fd.set(b"BaseFont".to_vec(), lopdf::Object::Name(b"Helvetica".to_vec()));
+            fd.set(
+                b"BaseFont".to_vec(),
+                lopdf::Object::Name(b"Helvetica".to_vec()),
+            );
             let font_id = doc.add_object(lopdf::Object::Dictionary(fd));
 
             // Add font to all pages' resources
-            let page_ids: Vec<(u32, lopdf::ObjectId)> = doc.get_pages().iter().map(|(&n, &id)| (n, id)).collect();
+            let page_ids: Vec<(u32, lopdf::ObjectId)> =
+                doc.get_pages().iter().map(|(&n, &id)| (n, id)).collect();
             for &(_, page_id) in &page_ids {
                 let res_id = if let Ok(page) = doc.get_dictionary(page_id) {
                     match page.get(b"Resources") {
                         Ok(lopdf::Object::Reference(id)) => Some(*id),
                         _ => None,
                     }
-                } else { None };
+                } else {
+                    None
+                };
 
                 if let Some(rid) = res_id {
                     if let Ok(res) = doc.get_dictionary_mut(rid) {
@@ -239,7 +300,9 @@ pub fn fill_flat_form(pdf_path: &str, output: &str, entries: &[FlatFormEntry]) -
                     let y_pt = (page_height_mm - entry.y) * 2.8346;
                     let content = format!(
                         "BT /Hff {} Tf {} {} Td ({}) Tj ET",
-                        fs, x_pt, y_pt,
+                        fs,
+                        x_pt,
+                        y_pt,
                         entry.text.replace('(', "\\(").replace(')', "\\)")
                     );
                     let stream = lopdf::Stream::new(lopdf::Dictionary::new(), content.into_bytes());
@@ -248,8 +311,14 @@ pub fn fill_flat_form(pdf_path: &str, output: &str, entries: &[FlatFormEntry]) -
                     if let Ok(page) = doc.get_dictionary_mut(page_id) {
                         let existing = page.get(b"Contents").ok().cloned();
                         let new_contents = match existing {
-                            Some(lopdf::Object::Reference(id)) => lopdf::Object::Array(vec![lopdf::Object::Reference(id), lopdf::Object::Reference(stream_id)]),
-                            Some(lopdf::Object::Array(mut arr)) => { arr.push(lopdf::Object::Reference(stream_id)); lopdf::Object::Array(arr) }
+                            Some(lopdf::Object::Reference(id)) => lopdf::Object::Array(vec![
+                                lopdf::Object::Reference(id),
+                                lopdf::Object::Reference(stream_id),
+                            ]),
+                            Some(lopdf::Object::Array(mut arr)) => {
+                                arr.push(lopdf::Object::Reference(stream_id));
+                                lopdf::Object::Array(arr)
+                            }
                             _ => lopdf::Object::Reference(stream_id),
                         };
                         page.set(b"Contents".to_vec(), new_contents);
@@ -259,7 +328,9 @@ pub fn fill_flat_form(pdf_path: &str, output: &str, entries: &[FlatFormEntry]) -
             }
 
             match doc.save(output) {
-                Ok(_) => serde_json::json!({"output": output, "entries_filled": filled}).to_string(),
+                Ok(_) => {
+                    serde_json::json!({"output": output, "entries_filled": filled}).to_string()
+                }
                 Err(e) => serde_json::json!({"error": e.to_string()}).to_string(),
             }
         }
@@ -269,8 +340,8 @@ pub fn fill_flat_form(pdf_path: &str, output: &str, entries: &[FlatFormEntry]) -
 
 pub struct FlatFormEntry {
     pub page: u32,
-    pub x: f32,      // mm from left
-    pub y: f32,      // mm from bottom
+    pub x: f32, // mm from left
+    pub y: f32, // mm from bottom
     pub text: String,
     pub font_size: Option<f32>,
 }
@@ -281,8 +352,9 @@ pub fn describe_form_layout(pdf_path: &str, page_number: u32) -> String {
     match lopdf::Document::load(pdf_path) {
         Ok(doc) => {
             let pages = doc.get_pages();
-            if pages.get(&page_number).is_none() {
-                return serde_json::json!({"error": format!("Page {} not found", page_number)}).to_string();
+            if !pages.contains_key(&page_number) {
+                return serde_json::json!({"error": format!("Page {} not found", page_number)})
+                    .to_string();
             }
 
             // Get page dimensions
@@ -292,11 +364,15 @@ pub fn describe_form_layout(pdf_path: &str, page_number: u32) -> String {
                     let w = mbox.get(2).and_then(|v| v.as_float().ok()).unwrap_or(595.0);
                     let h = mbox.get(3).and_then(|v| v.as_float().ok()).unwrap_or(842.0);
                     (w, h)
-                } else { (595.0, 842.0) }
-            } else { (595.0, 842.0) };
+                } else {
+                    (595.0, 842.0)
+                }
+            } else {
+                (595.0, 842.0)
+            };
 
-            let page_h_mm = page_h as f32 * 0.353;
-            let page_w_mm = page_w as f32 * 0.353;
+            let page_h_mm = page_h * 0.353;
+            let page_w_mm = page_w * 0.353;
 
             // Extract text - we'll parse the content stream for text positions
             // Use pdf_extract for the text content, then provide page dimensions
@@ -308,7 +384,8 @@ pub fn describe_form_layout(pdf_path: &str, page_number: u32) -> String {
             if let Ok(content_data) = doc.get_page_content(page_id) {
                 let content_str = String::from_utf8_lossy(&content_data);
                 // Find horizontal line operations (x1 y1 m x2 y2 l patterns)
-                let re = regex::Regex::new(r"([\d.]+)\s+([\d.]+)\s+m\s+([\d.]+)\s+([\d.]+)\s+l").unwrap();
+                let re = regex::Regex::new(r"([\d.]+)\s+([\d.]+)\s+m\s+([\d.]+)\s+([\d.]+)\s+l")
+                    .unwrap();
                 for cap in re.captures_iter(&content_str) {
                     let x1: f32 = cap[1].parse().unwrap_or(0.0);
                     let y1: f32 = cap[2].parse().unwrap_or(0.0);

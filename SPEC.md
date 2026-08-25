@@ -109,7 +109,7 @@ categories = ["command-line-utilities", "text-processing"]
 
 [dependencies]
 # MCP framework
-rmcp = { version = "1.7", features = ["server", "transport-io", "macros"] }
+rmcp = { version = "3.1.2", features = ["server", "transport-io", "macros"] }
 schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -118,9 +118,9 @@ anyhow = "1"
 thiserror = "2"
 
 # Core PDF (always present)
-lopdf = "0.40"
-printpdf = { version = "0.7", features = ["embedded_images"] }
-pdf-extract = "0.10"
+lopdf = { version = "0.42", default-features = false }
+printpdf = { package = "zavora-printpdf", version = "0.7.1", default-features = false, features = ["embedded_images"] }
+pdf-extract = "0.12"
 image = "0.24"
 sha2 = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
