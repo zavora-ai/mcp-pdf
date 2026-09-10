@@ -22,10 +22,13 @@ pub fn extract_page_text(pdf_path: &str, page_number: u32) -> String {
                     if total_pages == 1 {
                         return text;
                     }
-                    let chars_per_page = text.len() / total_pages as usize;
-                    let start = (page_number - 1) as usize * chars_per_page;
-                    let end = (start + chars_per_page).min(text.len());
-                    text[start..end].to_string()
+                    // Slice by character, not byte: byte indexing panics when the
+                    // page boundary falls inside a multi-byte UTF-8 char (e.g. CJK text).
+                    let ch: Vec<char> = text.chars().collect();
+                    let chars_per_page = (ch.len() / total_pages as usize).max(1);
+                    let start = (((page_number - 1) as usize) * chars_per_page).min(ch.len());
+                    let end = (start + chars_per_page).min(ch.len());
+                    ch[start..end].iter().collect::<String>()
                 }
                 Err(e) => format!("error: {}", e),
             }
